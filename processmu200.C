@@ -133,6 +133,7 @@ void process_file(const std::string &filename) {
 
     file->Close();
     delete file;
+    std::cout << "Processed file: " << filename << std::endl;
 }
 
 void processmu200(int startIndex = 1, int endIndex = 46) {
