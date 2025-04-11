@@ -9,6 +9,11 @@
 #include <TTree.h>
 #include <TH1F.h>
 
+
+// root -l
+// .x processmu200.C
+// Please remember to change the binning factor.
+
 const double c_light = 299792458;
 
 TH1F *embHist[3][7];
