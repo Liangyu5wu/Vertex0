@@ -9,11 +9,6 @@
 #include <TTree.h>
 #include <TH1F.h>
 
-
-// root -l
-// .x processmu200.C
-// Please remember to change the binning factor.
-
 const double c_light = 299792458;
 
 TH1F *embHist[3][7];
@@ -28,8 +23,8 @@ void initialize_histograms() {
         for (int bin = 0; bin < 7; ++bin) {
             std::string emb_name = std::string(emb_layers[layer]) + "_" + energy_bins[bin];
             std::string eme_name = std::string(eme_layers[layer]) + "_" + energy_bins[bin];
-            embHist[layer][bin] = new TH1F(emb_name.c_str(), (emb_name + " Corrected Time").c_str(), 1000, 0, 0); 
-            emeHist[layer][bin] = new TH1F(eme_name.c_str(), (eme_name + " Corrected Time").c_str(), 1000, 0, 0);
+            embHist[layer][bin] = new TH1F(emb_name.c_str(), (emb_name + " Corrected Time").c_str(), 1000, -5000, 5000); 
+            emeHist[layer][bin] = new TH1F(eme_name.c_str(), (eme_name + " Corrected Time").c_str(), 1000, -5000, 5000);
         }
     }
 }
@@ -62,6 +57,7 @@ void process_file(const std::string &filename) {
     std::vector<bool> *cellIsEMBarrel = nullptr;
     std::vector<bool> *cellIsEMEndCap = nullptr;
     std::vector<int> *cellLayer = nullptr;
+    std::vector<float> *cellSignificance = nullptr;
 
     tree->SetBranchAddress("TruthVtx_time", &truthVtxTime);
     tree->SetBranchAddress("TruthVtx_x", &truthVtxX);
@@ -76,62 +72,64 @@ void process_file(const std::string &filename) {
     tree->SetBranchAddress("Cell_isEM_Barrel", &cellIsEMBarrel);
     tree->SetBranchAddress("Cell_isEM_EndCap", &cellIsEMEndCap);
     tree->SetBranchAddress("Cell_layer", &cellLayer);
+    tree->SetBranchAddress("Cell_significance", &cellSignificance);
 
     Long64_t nEntries = tree->GetEntries();
     for (Long64_t entry = 0; entry < nEntries; ++entry) {
         tree->GetEntry(entry);
 
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
-            if (truthVtxIsHS->at(i)) {
-                float vtx_time = truthVtxTime->at(i);
-                float vtx_x = truthVtxX->at(i);
-                float vtx_y = truthVtxY->at(i);
-                float vtx_z = truthVtxZ->at(i);
+            if (!truthVtxIsHS->at(i)) continue;
 
-                for (size_t j = 0; j < cellE->size(); ++j) {
-                    if (cellE->at(j) > 1.0) {
-                        float cell_time = cellTime->at(j);
-                        float cell_x = cellX->at(j);
-                        float cell_y = cellY->at(j);
-                        float cell_z = cellZ->at(j);
+            float vtx_time = truthVtxTime->at(i);
+            float vtx_x = truthVtxX->at(i);
+            float vtx_y = truthVtxY->at(i);
+            float vtx_z = truthVtxZ->at(i);
 
-                        float distance_to_origin = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z) / 1000.0;
-                        float distance_vtx_to_cell = std::sqrt((cell_x - vtx_x)*(cell_x - vtx_x)
-                                                              + (cell_y - vtx_y)*(cell_y - vtx_y)
-                                                              + (cell_z - vtx_z)*(cell_z - vtx_z)) / 1000.0;
-                        float corrected_time = cell_time
-                                               + distance_to_origin / c_light
-                                               - distance_vtx_to_cell / c_light
-                                               - vtx_time;
+            for (size_t j = 0; j < cellE->size(); ++j) {
+                if (cellE->at(j) < 1.0) continue;
+                if (cellSignificance->at(j) < 4.0) continue;
 
-                        bool is_barrel = cellIsEMBarrel->at(j);
-                        bool is_endcap = cellIsEMEndCap->at(j);
-                        int layer = cellLayer->at(j);
-                        float energy = cellE->at(j);
+                    float cell_time = cellTime->at(j);
+                    float cell_x = cellX->at(j);
+                    float cell_y = cellY->at(j);
+                    float cell_z = cellZ->at(j);
+
+                    float distance_to_origin = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z) / 1000.0;
+                    float distance_vtx_to_cell = std::sqrt((cell_x - vtx_x)*(cell_x - vtx_x)
+                                                            + (cell_y - vtx_y)*(cell_y - vtx_y)
+                                                            + (cell_z - vtx_z)*(cell_z - vtx_z)) / 1000.0;
+                    float corrected_time = cell_time
+                                            + distance_to_origin / c_light
+                                            - distance_vtx_to_cell / c_light
+                                            - vtx_time;
+
+                    bool is_barrel = cellIsEMBarrel->at(j);
+                    bool is_endcap = cellIsEMEndCap->at(j);
+                    int layer = cellLayer->at(j);
+                    float energy = cellE->at(j);
 
 
-                        int bin = -1;
-                        if (energy > 1 && energy <= 1.5) bin = 0;
-                        else if (energy > 1.5 && energy <= 2) bin = 1;
-                        else if (energy > 2 && energy <= 3) bin = 2;
-                        else if (energy > 3 && energy <= 4) bin = 3;
-                        else if (energy > 4 && energy <= 5) bin = 4;
-                        else if (energy > 5 && energy <= 10) bin = 5;
-                        else if (energy > 10 && energy <= 100) bin = 6;
+                    int bin = -1;
+                    if (energy > 1 && energy <= 1.5) bin = 0;
+                    else if (energy > 1.5 && energy <= 2) bin = 1;
+                    else if (energy > 2 && energy <= 3) bin = 2;
+                    else if (energy > 3 && energy <= 4) bin = 3;
+                    else if (energy > 4 && energy <= 5) bin = 4;
+                    else if (energy > 5 && energy <= 10) bin = 5;
+                    else if (energy > 10 && energy <= 100) bin = 6;
 
-                        if (bin != -1) {
-                            if (is_barrel) {
-                                if (layer == 1) embHist[0][bin]->Fill(corrected_time);
-                                else if (layer == 2) embHist[1][bin]->Fill(corrected_time);
-                                else if (layer == 3) embHist[2][bin]->Fill(corrected_time);
-                            } else if (is_endcap) {
-                                if (layer == 1) emeHist[0][bin]->Fill(corrected_time);
-                                else if (layer == 2) emeHist[1][bin]->Fill(corrected_time);
-                                else if (layer == 3) emeHist[2][bin]->Fill(corrected_time);
-                            }
+                    if (bin != -1) {
+                        if (is_barrel) {
+                            if (layer == 1) embHist[0][bin]->Fill(corrected_time);
+                            else if (layer == 2) embHist[1][bin]->Fill(corrected_time);
+                            else if (layer == 3) embHist[2][bin]->Fill(corrected_time);
+                        } else if (is_endcap) {
+                            if (layer == 1) emeHist[0][bin]->Fill(corrected_time);
+                            else if (layer == 2) emeHist[1][bin]->Fill(corrected_time);
+                            else if (layer == 3) emeHist[2][bin]->Fill(corrected_time);
                         }
                     }
-                }
             }
         }
     }
@@ -158,7 +156,7 @@ void processmu200(int startIndex = 1, int endIndex = 46) {
         }
     }
 
-    TFile *outputFile = new TFile("histograms.root", "RECREATE");
+    TFile *outputFile = new TFile("histograms_-5000_5000.root", "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
