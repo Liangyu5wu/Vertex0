@@ -11,12 +11,12 @@
 #include <map>
 #include <string>
 
-//root -l "plot_iterations.C(\"histograms_-5000_5000.root\", \"EMB3\")"
+//root -l "plot_focus.C(\"histograms_-5000_5000.root\", \"EMB3\")"
 
-void plot_iterations(const char* file_path = "histograms.root", 
+void plot_focus(const char* file_path = "histograms.root", 
                      const char* layer_name = "EMB3",
                      double chi2_threshold = 1.0,
-                     int max_iterations = 1000) {
+                     int max_iterations = 5000) {
     std::map<std::string, std::vector<std::string>> layers = {
         {"EMB1", {"EMB1_1-1.5", "EMB1_1.5-2", "EMB1_2-3", "EMB1_3-4", "EMB1_4-5", "EMB1_5-10", "EMB1_10-100"}},
         {"EMB2", {"EMB2_1-1.5", "EMB2_1.5-2", "EMB2_2-3", "EMB2_3-4", "EMB2_4-5", "EMB2_5-10", "EMB2_10-100"}},
@@ -94,8 +94,34 @@ void plot_iterations(const char* file_path = "histograms.root",
             if (chi2_ndf < chi2_threshold) {
                 good_fit = true;
             } else {
+                // fit_min = mean - 2.0 * sigma;
+                // fit_max = mean + 2.0 * sigma;
+                // if (iteration > 1000) {
+                //     fit_min = mean - 1.7 * sigma;
+                //     fit_max = mean + 1.7 * sigma;
+                // }
+                // if (iteration > 3000) {
+                //     fit_min = mean - 1.5 * sigma;
+                //     fit_max = mean + 1.5 * sigma;
+                // }
                 fit_min = mean - 2.0 * sigma;
                 fit_max = mean + 2.0 * sigma;
+                if (iteration > 1000) {
+                    fit_min = mean - 1.7 * sigma;
+                    fit_max = mean + 1.7 * sigma;
+                }
+                if (iteration > 2000) {
+                    fit_min = mean - 1.5 * sigma;
+                    fit_max = mean + 1.5 * sigma;
+                }
+                if (iteration > 3000) {
+                    fit_min = mean - 1.0 * sigma;
+                    fit_max = mean + 1.0 * sigma;
+                }
+                if (iteration > 4000) {
+                    fit_min = mean - 0.7 * sigma;
+                    fit_max = mean + 0.7 * sigma;
+                }
                 iteration++;
             }
         }
