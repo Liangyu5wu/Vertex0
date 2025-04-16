@@ -17,7 +17,7 @@ TH1F *emeHist[3][7];
 void initialize_histograms() {
     const char* emb_layers[3] = {"EMB1", "EMB2", "EMB3"};
     const char* eme_layers[3] = {"EME1", "EME2", "EME3"};
-    const char* energy_bins[7] = {"1-1.5", "1.5-2", "2-3", "3-4", "4-5", "5-10", "10-100"};
+    const char* energy_bins[7] = {"1-1.5", "1.5-2", "2-3", "3-4", "4-5", "5-10", "Above-10"};
     
     float hist_ranges[7][2] = {
         {-5000, 5000},  // 1-1.5
@@ -29,10 +29,13 @@ void initialize_histograms() {
         {-3000, 3000}   // 10-100
     };
     
-    int nbins = 1500;
+    float bin_width = 10.0; 
 
     for (int layer = 0; layer < 3; ++layer) {
         for (int bin = 0; bin < 7; ++bin) {
+
+            int nbins = static_cast<int>((hist_ranges[bin][1] - hist_ranges[bin][0]) / bin_width);
+
             std::string emb_name = std::string(emb_layers[layer]) + "_" + energy_bins[bin];
             std::string eme_name = std::string(eme_layers[layer]) + "_" + energy_bins[bin];
             
@@ -138,7 +141,7 @@ void process_file(const std::string &filename) {
                 else if (energy > 3 && energy <= 4) bin = 3;
                 else if (energy > 4 && energy <= 5) bin = 4;
                 else if (energy > 5 && energy <= 10) bin = 5;
-                else if (energy > 10 && energy <= 100) bin = 6;
+                else if (energy > 10) bin = 6;
 
                 if (bin != -1) {
                     if (is_barrel) {
@@ -177,7 +180,7 @@ void processmu200_dif_energyrange(int startIndex = 1, int endIndex = 46) {
         }
     }
 
-    TFile *outputFile = new TFile("histograms_varied_ranges.root", "RECREATE");
+    TFile *outputFile = new TFile("histograms_varied_ranges_noupbound.root", "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
