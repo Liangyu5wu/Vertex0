@@ -163,7 +163,7 @@ void process_file(const std::string &filename) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_dif_energyrange(int startIndex = 1, int endIndex = 46) {
+void processmu200_intrinsic(int startIndex = 1, int endIndex = 46) {
     initialize_histograms();
 
     const std::string path = ".";
