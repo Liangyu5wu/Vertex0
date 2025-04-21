@@ -34,6 +34,9 @@ const float eme3_ysigma[7] = {1200.48, 887.45, 653.29, 471.23, 389.62, 286.83, 2
 TH1F *eventTimeHist;
 TH1F *truthTimeHist;
 
+int totalTruthVertices = 0;
+int unmatchedVertices = 0;
+
 void initialize_histograms() {
     eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time", 300, -1500, 1500);
     eventTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
@@ -129,12 +132,7 @@ void process_file(const std::string &filename) {
 
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
             if (!truthVtxIsHS->at(i)) continue;
-            for (size_t reco_i = 0; reco_i < recoVtxIsHS->size(); ++reco_i) {
-                if (!recoVtxIsHS->at(reco_i)) continue;
-                float reco_vtx_x = recoVtxX->at(reco_i);
-                float reco_vtx_y = recoVtxY->at(reco_i);
-                float reco_vtx_z = recoVtxZ->at(reco_i);
-            }
+            totalTruthVertices++;
 
             float vtx_time = truthVtxTime->at(i);
             float vtx_x = truthVtxX->at(i);
@@ -143,6 +141,27 @@ void process_file(const std::string &filename) {
             double weighted_sum = 0.0;
             double weight_sum = 0.0;
             truthTimeHist->Fill(vtx_time);
+
+            bool foundRecoVtx = false;
+            float reco_vtx_x = 0.0;
+            float reco_vtx_y = 0.0;
+            float reco_vtx_z = 0.0;
+
+            for (size_t reco_i = 0; reco_i < recoVtxIsHS->size(); ++reco_i) {
+                if (!recoVtxIsHS->at(reco_i)) continue;
+                reco_vtx_x = recoVtxX->at(reco_i);
+                reco_vtx_y = recoVtxY->at(reco_i);
+                reco_vtx_z = recoVtxZ->at(reco_i);
+                foundRecoVtx = true;
+                break;
+            }
+            
+            if (!foundRecoVtx) {
+                unmatchedVertices++;
+                continue;
+            }
+
+            
 
             for (size_t j = 0; j < cellE->size(); ++j) {
                 if (cellE->at(j) < 1.0) continue;
@@ -201,6 +220,8 @@ void process_file(const std::string &filename) {
 }
 
 void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
+    totalTruthVertices = 0;
+    unmatchedVertices = 0;
     initialize_histograms();
 
     const std::string path = ".";
@@ -216,6 +237,11 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
     }
+
+    std::cout << "Statistical Summary:" << std::endl;
+    std::cout << "Total Truth Vertices: " << totalTruthVertices << std::endl;
+    std::cout << "Unmatched Vertices: " << unmatchedVertices << std::endl;
+    std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
     TFile *outputFile = new TFile("event_time_reconstruction.root", "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
