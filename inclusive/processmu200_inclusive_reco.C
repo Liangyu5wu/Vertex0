@@ -34,17 +34,52 @@ const float eme3_ysigma[7] = {1200.48, 887.45, 653.29, 471.23, 389.62, 286.83, 2
 TH1F *eventTimeHist;
 TH1F *truthTimeHist;
 
+TH1F *emb1TimeHist;
+TH1F *emb2TimeHist;
+TH1F *emb3TimeHist;
+TH1F *eme1TimeHist;
+TH1F *eme2TimeHist;
+TH1F *eme3TimeHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
 void initialize_histograms() {
-    eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time", 300, -1500, 1500);
+    const int bins = 300;
+    const double min_range = -1500;
+    const double max_range = 1500;
+    
+    eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time (All Layers)", bins, min_range, max_range);
     eventTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     eventTimeHist->GetYaxis()->SetTitle("Events");
     
-    truthTimeHist = new TH1F("truthTime", "Truth Vertex Time", 300, -1500, 1500);
+    truthTimeHist = new TH1F("truthTime", "Truth Vertex Time", bins, min_range, max_range);
     truthTimeHist->GetXaxis()->SetTitle("Truth Time [ps]");
     truthTimeHist->GetYaxis()->SetTitle("Events");
+    
+    emb1TimeHist = new TH1F("emb1Time", "Reconstructed Event Time (EMB1 Only)", bins, min_range, max_range);
+    emb1TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    emb1TimeHist->GetYaxis()->SetTitle("Events");
+    
+    emb2TimeHist = new TH1F("emb2Time", "Reconstructed Event Time (EMB2 Only)", bins, min_range, max_range);
+    emb2TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    emb2TimeHist->GetYaxis()->SetTitle("Events");
+    
+    emb3TimeHist = new TH1F("emb3Time", "Reconstructed Event Time (EMB3 Only)", bins, min_range, max_range);
+    emb3TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    emb3TimeHist->GetYaxis()->SetTitle("Events");
+    
+    eme1TimeHist = new TH1F("eme1Time", "Reconstructed Event Time (EME1 Only)", bins, min_range, max_range);
+    eme1TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    eme1TimeHist->GetYaxis()->SetTitle("Events");
+    
+    eme2TimeHist = new TH1F("eme2Time", "Reconstructed Event Time (EME2 Only)", bins, min_range, max_range);
+    eme2TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    eme2TimeHist->GetYaxis()->SetTitle("Events");
+    
+    eme3TimeHist = new TH1F("eme3Time", "Reconstructed Event Time (EME3 Only)", bins, min_range, max_range);
+    eme3TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    eme3TimeHist->GetYaxis()->SetTitle("Events");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -161,6 +196,13 @@ void process_file(const std::string &filename) {
                 continue;
             }
 
+            double weighted_sum_emb1 = 0.0, weight_sum_emb1 = 0.0;
+            double weighted_sum_emb2 = 0.0, weight_sum_emb2 = 0.0;
+            double weighted_sum_emb3 = 0.0, weight_sum_emb3 = 0.0;
+            double weighted_sum_eme1 = 0.0, weight_sum_eme1 = 0.0;
+            double weighted_sum_eme2 = 0.0, weight_sum_eme2 = 0.0;
+            double weighted_sum_eme3 = 0.0, weight_sum_eme3 = 0.0;
+
             
 
             for (size_t j = 0; j < cellE->size(); ++j) {
@@ -204,12 +246,66 @@ void process_file(const std::string &filename) {
                     
                     weighted_sum += adjusted_time * weight;
                     weight_sum += weight;
+
+                    if (is_barrel) {
+                        if (layer == 1) {
+                            weighted_sum_emb1 += adjusted_time * weight;
+                            weight_sum_emb1 += weight;
+                        } else if (layer == 2) {
+                            weighted_sum_emb2 += adjusted_time * weight;
+                            weight_sum_emb2 += weight;
+                        } else if (layer == 3) {
+                            weighted_sum_emb3 += adjusted_time * weight;
+                            weight_sum_emb3 += weight;
+                        }
+                    } else if (is_endcap) {
+                        if (layer == 1) {
+                            weighted_sum_eme1 += adjusted_time * weight;
+                            weight_sum_eme1 += weight;
+                        } else if (layer == 2) {
+                            weighted_sum_eme2 += adjusted_time * weight;
+                            weight_sum_eme2 += weight;
+                        } else if (layer == 3) {
+                            weighted_sum_eme3 += adjusted_time * weight;
+                            weight_sum_eme3 += weight;
+                        }
+                    }
                 }
             }
 
             if (weight_sum > 0) {
                 float event_time = weighted_sum / weight_sum;
                 eventTimeHist->Fill(event_time);
+            }
+
+            if (weight_sum_emb1 > 0) {
+                float event_time_emb1 = weighted_sum_emb1 / weight_sum_emb1;
+                emb1TimeHist->Fill(event_time_emb1);
+            }
+            
+            if (weight_sum_emb2 > 0) {
+                float event_time_emb2 = weighted_sum_emb2 / weight_sum_emb2;
+                emb2TimeHist->Fill(event_time_emb2);
+            }
+            
+            if (weight_sum_emb3 > 0) {
+                float event_time_emb3 = weighted_sum_emb3 / weight_sum_emb3;
+                emb3TimeHist->Fill(event_time_emb3);
+            }
+            
+            if (weight_sum_eme1 > 0) {
+                float event_time_eme1 = weighted_sum_eme1 / weight_sum_eme1;
+                eme1TimeHist->Fill(event_time_eme1);
+            }
+            
+            if (weight_sum_eme2 > 0) {
+                float event_time_eme2 = weighted_sum_eme2 / weight_sum_eme2;
+                eme2TimeHist->Fill(event_time_eme2);
+            }
+            
+            if (weight_sum_eme3 > 0) {
+                float event_time_eme3 = weighted_sum_eme3 / weight_sum_eme3;
+                eme3TimeHist->Fill(event_time_eme3);
             }
         }
     }
@@ -251,10 +347,23 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
 
     eventTimeHist->Write();
     truthTimeHist->Write();
+    emb1TimeHist->Write();
+    emb2TimeHist->Write();
+    emb3TimeHist->Write();
+    eme1TimeHist->Write();
+    eme2TimeHist->Write();
+    eme3TimeHist->Write();
+
     outputFile->Close();
     delete outputFile;
     delete eventTimeHist;
     delete truthTimeHist;
+    delete emb1TimeHist;
+    delete emb2TimeHist;
+    delete emb3TimeHist;
+    delete eme1TimeHist;
+    delete eme2TimeHist;
+    delete eme3TimeHist;
 
     std::cout << "Event time reconstruction completed. Results saved to event_time_reconstruction.root" << std::endl;
     
