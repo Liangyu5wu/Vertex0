@@ -89,6 +89,10 @@ void process_file(const std::string &filename) {
     std::vector<float> *truthVtxX = nullptr;
     std::vector<float> *truthVtxY = nullptr;
     std::vector<float> *truthVtxZ = nullptr;
+    std::vector<float> *recoVtxX = nullptr;
+    std::vector<float> *recoVtxY = nullptr;
+    std::vector<float> *recoVtxZ = nullptr;
+    std::vector<bool> *recoVtxIsHS = nullptr;
     std::vector<bool> *truthVtxIsHS = nullptr;
     std::vector<float> *cellTime = nullptr;
     std::vector<float> *cellE = nullptr;
@@ -105,6 +109,10 @@ void process_file(const std::string &filename) {
     tree->SetBranchAddress("TruthVtx_y", &truthVtxY);
     tree->SetBranchAddress("TruthVtx_z", &truthVtxZ);
     tree->SetBranchAddress("TruthVtx_isHS", &truthVtxIsHS);
+    tree->SetBranchAddress("RecoVtx_x", &recoVtxX);
+    tree->SetBranchAddress("RecoVtx_y", &recoVtxY);
+    tree->SetBranchAddress("RecoVtx_z", &recoVtxZ);
+    tree->SetBranchAddress("RecoVtx_isHS", &recoVtxIsHS);
     tree->SetBranchAddress("Cell_time", &cellTime);
     tree->SetBranchAddress("Cell_e", &cellE);
     tree->SetBranchAddress("Cell_x", &cellX);
@@ -121,6 +129,12 @@ void process_file(const std::string &filename) {
 
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
             if (!truthVtxIsHS->at(i)) continue;
+            for (size_t reco_i = 0; reco_i < recoVtxIsHS->size(); ++reco_i) {
+                if (!recoVtxIsHS->at(reco_i)) continue;
+                float reco_vtx_x = recoVtxX->at(reco_i);
+                float reco_vtx_y = recoVtxY->at(reco_i);
+                float reco_vtx_z = recoVtxZ->at(reco_i);
+            }
 
             float vtx_time = truthVtxTime->at(i);
             float vtx_x = truthVtxX->at(i);
@@ -140,13 +154,12 @@ void process_file(const std::string &filename) {
                 float cell_z = cellZ->at(j);
 
                 float distance_to_origin = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z) / 1000.0;
-                float distance_vtx_to_cell = std::sqrt((cell_x - vtx_x)*(cell_x - vtx_x)
-                                                     + (cell_y - vtx_y)*(cell_y - vtx_y)
-                                                     + (cell_z - vtx_z)*(cell_z - vtx_z)) / 1000.0;
+                float distance_vtx_to_cell = std::sqrt((cell_x - reco_vtx_x)*(cell_x - reco_vtx_x)
+                                                     + (cell_y - reco_vtx_y)*(cell_y - reco_vtx_y)
+                                                     + (cell_z - reco_vtx_z)*(cell_z - reco_vtx_z)) / 1000.0;
                 float corrected_time = cell_time
                                      + distance_to_origin / c_light
-                                     - distance_vtx_to_cell / c_light
-                                     - vtx_time;
+                                     - distance_vtx_to_cell / c_light;
 
                 bool is_barrel = cellIsEMBarrel->at(j);
                 bool is_endcap = cellIsEMEndCap->at(j);
