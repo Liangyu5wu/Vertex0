@@ -32,11 +32,16 @@ const float eme3_y[7] = {122.03, 88.96, 73.61, 63.57, 46.46, 48.39, 32.22};
 const float eme3_ysigma[7] = {1200.48, 887.45, 653.29, 471.23, 389.62, 286.83, 209.79};
 
 TH1F *eventTimeHist;
+TH1F *truthTimeHist;
 
-void initialize_histogram() {
+void initialize_histograms() {
     eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time", 300, -1500, 1500);
     eventTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     eventTimeHist->GetYaxis()->SetTitle("Events");
+    
+    truthTimeHist = new TH1F("truthTime", "Truth Vertex Time", 300, -1500, 1500);
+    truthTimeHist->GetXaxis()->SetTitle("Truth Time [ps]");
+    truthTimeHist->GetYaxis()->SetTitle("Events");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -123,6 +128,7 @@ void process_file(const std::string &filename) {
             float vtx_z = truthVtxZ->at(i);
             double weighted_sum = 0.0;
             double weight_sum = 0.0;
+            truthTimeHist->Fill(vtx_time);
 
             for (size_t j = 0; j < cellE->size(); ++j) {
                 if (cellE->at(j) < 1.0) continue;
@@ -205,9 +211,11 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
     }
 
     eventTimeHist->Write();
+    truthTimeHist->Write();
     outputFile->Close();
     delete outputFile;
     delete eventTimeHist;
+    delete truthTimeHist;
 
     std::cout << "Event time reconstruction completed. Results saved to event_time_reconstruction.root" << std::endl;
     
