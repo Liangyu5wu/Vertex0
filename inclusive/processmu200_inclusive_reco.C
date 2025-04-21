@@ -11,47 +11,58 @@
 
 const double c_light = 299792458;
 
-TH1F *embHist[3][7];
-TH1F *emeHist[3][7];
+const float emb_x[7] = {1.25, 1.75, 2.5, 3.5, 4.5, 7.5, 55};
 
-void initialize_histograms() {
-    const char* emb_layers[3] = {"EMB1", "EMB2", "EMB3"};
-    const char* eme_layers[3] = {"EME1", "EME2", "EME3"};
-    const char* energy_bins[7] = {"1-1.5", "1.5-2", "2-3", "3-4", "4-5", "5-10", "Above-10"};
-    
-    float hist_ranges[7][2] = {
-        {-5000, 5000},  // 1-1.5
-        {-4000, 4000},  // 1.5-2
-        {-3000, 3000},  // 2-3
-        {-3000, 3000},  // 3-4
-        {-2000, 2000},  // 4-5
-        {-2000, 2000},  // 5-10
-        {-3000, 3000}   // 10-100
-    };
-    
-    float bin_width = 10.0; 
+const float emb1_y[7] = {45.58, 38.24, 30.64, 24.90, 23.00, 16.19, 12.12};
+const float emb1_ysigma[7] = {443.97, 318.89, 237.11, 181.55, 150.30, 142.56, 103.04};
 
-    for (int layer = 0; layer < 3; ++layer) {
-        for (int bin = 0; bin < 7; ++bin) {
+const float emb2_y[7] = {-37.66, -5.42, 17.14, 27.26, 24.13, 26.50, 19.37};
+const float emb2_ysigma[7] = {2169.56, 1507.85, 1061.49, 741.75, 569.08, 371.64, 177.16};
 
-            int nbins = static_cast<int>((hist_ranges[bin][1] - hist_ranges[bin][0]) / bin_width);
+const float emb3_y[7] = {75.19, 91.66, 66.45, 59.93, 59.95, 44.59, 40.15};
+const float emb3_ysigma[7] = {1335.87, 951.72, 720.61, 499.29, 442.37, 298.39, 221.61};
 
-            std::string emb_name = std::string(emb_layers[layer]) + "_" + energy_bins[bin];
-            std::string eme_name = std::string(eme_layers[layer]) + "_" + energy_bins[bin];
-            
-            embHist[layer][bin] = new TH1F(emb_name.c_str(), 
-                                         (emb_name + " Corrected Time").c_str(), 
-                                         nbins, 
-                                         hist_ranges[bin][0], 
-                                         hist_ranges[bin][1]); 
-            
-            emeHist[layer][bin] = new TH1F(eme_name.c_str(), 
-                                         (eme_name + " Corrected Time").c_str(), 
-                                         nbins, 
-                                         hist_ranges[bin][0], 
-                                         hist_ranges[bin][1]);
-        }
+const float eme1_y[7] = {111.43, 92.91, 78.46, 60.97, 47.43, 31.16, 15.49};
+const float eme1_ysigma[7] = {1069.59, 770.29, 579.83, 439.67, 354.02, 303.42, 333.59};
+
+const float eme2_y[7] = {141.03, 136.79, 117.32, 100.06, 82.39, 67.07, 33.83};
+const float eme2_ysigma[7] = {1754.53, 1289.32, 935.65, 681.08, 543.53, 383.86, 219.94};
+
+const float eme3_y[7] = {122.03, 88.96, 73.61, 63.57, 46.46, 48.39, 32.22};
+const float eme3_ysigma[7] = {1200.48, 887.45, 653.29, 471.23, 389.62, 286.83, 209.79};
+
+TH1F *eventTimeHist;
+
+void initialize_histogram() {
+    eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time", 300, -1500, 1500);
+    eventTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    eventTimeHist->GetYaxis()->SetTitle("Events");
+}
+
+float get_mean(bool is_barrel, int layer, int energy_bin) {
+    if (is_barrel) {
+        if (layer == 1) return emb1_y[energy_bin];
+        else if (layer == 2) return emb2_y[energy_bin];
+        else if (layer == 3) return emb3_y[energy_bin];
+    } else { // is_endcap
+        if (layer == 1) return eme1_y[energy_bin];
+        else if (layer == 2) return eme2_y[energy_bin];
+        else if (layer == 3) return eme3_y[energy_bin];
     }
+    return 0.0;
+}
+
+float get_sigma(bool is_barrel, int layer, int energy_bin) {
+    if (is_barrel) {
+        if (layer == 1) return emb1_ysigma[energy_bin];
+        else if (layer == 2) return emb2_ysigma[energy_bin];
+        else if (layer == 3) return emb3_ysigma[energy_bin];
+    } else { // is_endcap
+        if (layer == 1) return eme1_ysigma[energy_bin];
+        else if (layer == 2) return eme2_ysigma[energy_bin];
+        else if (layer == 3) return eme3_ysigma[energy_bin];
+    }
+    return 1.0;
 }
 
 void process_file(const std::string &filename) {
@@ -110,6 +121,8 @@ void process_file(const std::string &filename) {
             float vtx_x = truthVtxX->at(i);
             float vtx_y = truthVtxY->at(i);
             float vtx_z = truthVtxZ->at(i);
+            double weighted_sum = 0.0;
+            double weight_sum = 0.0;
 
             for (size_t j = 0; j < cellE->size(); ++j) {
                 if (cellE->at(j) < 1.0) continue;
@@ -143,17 +156,22 @@ void process_file(const std::string &filename) {
                 else if (energy > 5 && energy <= 10) bin = 5;
                 else if (energy > 10) bin = 6;
 
-                if (bin != -1) {
-                    if (is_barrel) {
-                        if (layer == 1) embHist[0][bin]->Fill(corrected_time);
-                        else if (layer == 2) embHist[1][bin]->Fill(corrected_time);
-                        else if (layer == 3) embHist[2][bin]->Fill(corrected_time);
-                    } else if (is_endcap) {
-                        if (layer == 1) emeHist[0][bin]->Fill(corrected_time);
-                        else if (layer == 2) emeHist[1][bin]->Fill(corrected_time);
-                        else if (layer == 3) emeHist[2][bin]->Fill(corrected_time);
-                    }
+                if (bin != -1 && (is_barrel || is_endcap) && (layer >= 1 && layer <= 3)) {
+                    float mean = get_mean(is_barrel, layer, bin);
+                    float sigma = get_sigma(is_barrel, layer, bin);
+                    
+                    float adjusted_time = corrected_time - mean;
+                    
+                    float weight = 1.0 / (sigma * sigma);
+                    
+                    weighted_sum += adjusted_time * weight;
+                    weight_sum += weight;
                 }
+            }
+
+            if (weight_sum > 0) {
+                float event_time = weighted_sum / weight_sum;
+                eventTimeHist->Fill(event_time);
             }
         }
     }
@@ -180,27 +198,17 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
         }
     }
 
-    TFile *outputFile = new TFile("histograms_varied_ranges_noupbound.root", "RECREATE");
+    TFile *outputFile = new TFile("event_time_reconstruction.root", "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
     }
 
-    for (int layer = 0; layer < 3; ++layer) {
-        for (int bin = 0; bin < 7; ++bin) {
-            embHist[layer][bin]->Write();
-            emeHist[layer][bin]->Write();
-        }
-    }
-
+    eventTimeHist->Write();
     outputFile->Close();
     delete outputFile;
+    delete eventTimeHist;
 
-    for (int layer = 0; layer < 3; ++layer) {
-        for (int bin = 0; bin < 7; ++bin) {
-            delete embHist[layer][bin];
-            delete emeHist[layer][bin];
-        }
-    }
+    std::cout << "Event time reconstruction completed. Results saved to event_time_reconstruction.root" << std::endl;
     
 }
