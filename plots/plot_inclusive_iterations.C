@@ -11,7 +11,8 @@
 #include <map>
 #include <string>
 
-//root -l "plot_inclusive_iterations.C(\"histograms_inclusive_5000.root\", \"EMB3\")"
+//root -l -q "plot_inclusive_iterations.C(\"histograms_inclusive_cali.root\", \"EMB3\", 1.0, 5000, 1)"
+//root -l -q "plot_inclusive_iterations.C(\"histograms_inclusive_cali.root\", \"EME1\", 1.0, 5000, 2)"
 
 bool iterativeFitMethod1(TH1* hist, TF1* fit_function, double& mean, double& sigma, 
                          double& chi2_ndf, int& iteration, double& fit_min, 
