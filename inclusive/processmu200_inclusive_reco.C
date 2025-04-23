@@ -33,6 +33,7 @@ const float eme3_ysigma[7] = {1200.48, 887.45, 653.29, 471.23, 389.62, 286.83, 2
 
 TH1F *eventTimeHist;
 TH1F *truthTimeHist;
+TH1F *eventDeltaTimeHist;
 
 TH1F *emb1TimeHist;
 TH1F *emb2TimeHist;
@@ -40,6 +41,13 @@ TH1F *emb3TimeHist;
 TH1F *eme1TimeHist;
 TH1F *eme2TimeHist;
 TH1F *eme3TimeHist;
+
+TH1F *emb1DeltaTimeHist;
+TH1F *emb2DeltaTimeHist;
+TH1F *emb3DeltaTimeHist;
+TH1F *eme1DeltaTimeHist;
+TH1F *eme2DeltaTimeHist;
+TH1F *eme3DeltaTimeHist;
 
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
@@ -56,6 +64,10 @@ void initialize_histograms() {
     truthTimeHist = new TH1F("truthTime", "Truth Vertex Time", bins, min_range, max_range);
     truthTimeHist->GetXaxis()->SetTitle("Truth Time [ps]");
     truthTimeHist->GetYaxis()->SetTitle("Events");
+
+    eventDeltaTimeHist = new TH1F("eventDeltaTime", "Delta t0 (All Layers)", bins, min_range, max_range);
+    eventDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    eventDeltaTimeHist->GetYaxis()->SetTitle("Events");
     
     emb1TimeHist = new TH1F("emb1Time", "Reconstructed Event Time (EMB1 Only)", bins, min_range, max_range);
     emb1TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
@@ -80,6 +92,30 @@ void initialize_histograms() {
     eme3TimeHist = new TH1F("eme3Time", "Reconstructed Event Time (EME3 Only)", bins, min_range, max_range);
     eme3TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     eme3TimeHist->GetYaxis()->SetTitle("Events");
+
+    emb1DeltaTimeHist = new TH1F("emb1DeltaTime", "Delta t0 (EMB1 Only)", bins, min_range, max_range);
+    emb1DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    emb1DeltaTimeHist->GetYaxis()->SetTitle("Events");
+
+    emb2DeltaTimeHist = new TH1F("emb2DeltaTime", "Delta t0 (EMB2 Only)", bins, min_range, max_range);
+    emb2DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    emb2DeltaTimeHist->GetYaxis()->SetTitle("Events");
+
+    emb3DeltaTimeHist = new TH1F("emb3DeltaTime", "Delta t0 (EMB3 Only)", bins, min_range, max_range);
+    emb3DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    emb3DeltaTimeHist->GetYaxis()->SetTitle("Events");
+
+    eme1DeltaTimeHist = new TH1F("eme1DeltaTime", "Delta t0 (EME1 Only)", bins, min_range, max_range);
+    eme1DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    eme1DeltaTimeHist->GetYaxis()->SetTitle("Events");
+
+    eme2DeltaTimeHist = new TH1F("eme2DeltaTime", "Delta t0 (EME2 Only)", bins, min_range, max_range);
+    eme2DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    eme2DeltaTimeHist->GetYaxis()->SetTitle("Events");
+
+    eme3DeltaTimeHist = new TH1F("eme3DeltaTime", "Delta t0 (EME3 Only)", bins, min_range, max_range);
+    eme3DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    eme3DeltaTimeHist->GetYaxis()->SetTitle("Events");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -275,36 +311,50 @@ void process_file(const std::string &filename) {
 
             if (weight_sum > 0) {
                 float event_time = weighted_sum / weight_sum;
+                float delta_event_time = event_time - vtx_time;
+                eventDeltaTimeHist->Fill(delta_event_time);
                 eventTimeHist->Fill(event_time);
             }
 
             if (weight_sum_emb1 > 0) {
                 float event_time_emb1 = weighted_sum_emb1 / weight_sum_emb1;
+                float delta_event_time_emb1 = event_time_emb1 - vtx_time;
+                emb1DeltaTimeHist->Fill(delta_event_time_emb1);
                 emb1TimeHist->Fill(event_time_emb1);
             }
             
             if (weight_sum_emb2 > 0) {
                 float event_time_emb2 = weighted_sum_emb2 / weight_sum_emb2;
+                float delta_event_time_emb2 = event_time_emb2 - vtx_time;
+                emb2DeltaTimeHist->Fill(delta_event_time_emb2);
                 emb2TimeHist->Fill(event_time_emb2);
             }
             
             if (weight_sum_emb3 > 0) {
                 float event_time_emb3 = weighted_sum_emb3 / weight_sum_emb3;
+                float delta_event_time_emb3 = event_time_emb3 - vtx_time;
+                emb3DeltaTimeHist->Fill(delta_event_time_emb3);
                 emb3TimeHist->Fill(event_time_emb3);
             }
             
             if (weight_sum_eme1 > 0) {
                 float event_time_eme1 = weighted_sum_eme1 / weight_sum_eme1;
+                float delta_event_time_eme1 = event_time_eme1 - vtx_time;
+                eme1DeltaTimeHist->Fill(delta_event_time_eme1);
                 eme1TimeHist->Fill(event_time_eme1);
             }
             
             if (weight_sum_eme2 > 0) {
                 float event_time_eme2 = weighted_sum_eme2 / weight_sum_eme2;
+                float delta_event_time_eme2 = event_time_eme2 - vtx_time;
+                eme2DeltaTimeHist->Fill(delta_event_time_eme2);
                 eme2TimeHist->Fill(event_time_eme2);
             }
             
             if (weight_sum_eme3 > 0) {
                 float event_time_eme3 = weighted_sum_eme3 / weight_sum_eme3;
+                float delta_event_time_eme3 = event_time_eme3 - vtx_time;
+                eme3DeltaTimeHist->Fill(delta_event_time_eme3);
                 eme3TimeHist->Fill(event_time_eme3);
             }
         }
@@ -347,16 +397,24 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
 
     eventTimeHist->Write();
     truthTimeHist->Write();
+    eventDeltaTimeHist->Write();
     emb1TimeHist->Write();
     emb2TimeHist->Write();
     emb3TimeHist->Write();
     eme1TimeHist->Write();
     eme2TimeHist->Write();
     eme3TimeHist->Write();
+    emb1DeltaTimeHist->Write();
+    emb2DeltaTimeHist->Write();
+    emb3DeltaTimeHist->Write();
+    eme1DeltaTimeHist->Write();
+    eme2DeltaTimeHist->Write();
+    eme3DeltaTimeHist->Write();
 
     outputFile->Close();
     delete outputFile;
     delete eventTimeHist;
+    delete eventDeltaTimeHist;
     delete truthTimeHist;
     delete emb1TimeHist;
     delete emb2TimeHist;
@@ -364,6 +422,12 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
     delete eme1TimeHist;
     delete eme2TimeHist;
     delete eme3TimeHist;
+    delete emb1DeltaTimeHist;
+    delete emb2DeltaTimeHist;
+    delete emb3DeltaTimeHist;
+    delete eme1DeltaTimeHist;
+    delete eme2DeltaTimeHist;
+    delete eme3DeltaTimeHist;
 
     std::cout << "Event time reconstruction completed. Results saved to event_time_reconstruction.root" << std::endl;
     
