@@ -47,13 +47,18 @@ TH1F *eme1DeltaTimeHist;
 TH1F *eme2DeltaTimeHist;
 TH1F *eme3DeltaTimeHist;
 
+TH1F *embTimeHist;
+TH1F *emeTimeHist;
+TH1F *embDeltaTimeHist;
+TH1F *emeDeltaTimeHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
 void initialize_histograms() {
-    const int bins = 300;
-    const double min_range = -1500;
-    const double max_range = 1500;
+    const int bins = 450;
+    const double min_range = -2500;
+    const double max_range = 2000;
     
     eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time (All Layers)", bins, min_range, max_range);
     eventTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
@@ -114,6 +119,22 @@ void initialize_histograms() {
     eme3DeltaTimeHist = new TH1F("eme3DeltaTime", "Delta t0 (EME3 Only)", bins, min_range, max_range);
     eme3DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
     eme3DeltaTimeHist->GetYaxis()->SetTitle("Events");
+
+    embDeltaTimeHist = new TH1F("embDeltaTime", "Delta t0 (EMB Only)", bins, min_range, max_range);
+    embDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    embDeltaTimeHist->GetYaxis()->SetTitle("Events");
+
+    emeDeltaTimeHist = new TH1F("emeDeltaTime", "Delta t0 (EME Only)", bins, min_range, max_range);
+    emeDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    emeDeltaTimeHist->GetYaxis()->SetTitle("Events");
+
+    embTimeHist = new TH1F("embTime", "Reconstructed Event Time (EMB Only)", bins, min_range, max_range);
+    embTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    embTimeHist->GetYaxis()->SetTitle("Events");
+
+    emeTimeHist = new TH1F("emeTime", "Reconstructed Event Time (EME Only)", bins, min_range, max_range);
+    emeTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    emeTimeHist->GetYaxis()->SetTitle("Events");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -209,6 +230,11 @@ void process_file(const std::string &filename) {
             float vtx_z = truthVtxZ->at(i);
             double weighted_sum = 0.0;
             double weight_sum = 0.0;
+            double weighted_sum_emb = 0.0;
+            double weight_sum_emb = 0.0;
+            double weighted_sum_eme = 0.0;
+            double weight_sum_eme = 0.0;
+
             truthTimeHist->Fill(vtx_time);
 
             bool foundRecoVtx = false;
@@ -282,6 +308,8 @@ void process_file(const std::string &filename) {
                     weight_sum += weight;
 
                     if (is_barrel) {
+                        weighted_sum_emb += adjusted_time * weight;
+                        weight_sum_emb += weight;
                         if (layer == 1) {
                             weighted_sum_emb1 += adjusted_time * weight;
                             weight_sum_emb1 += weight;
@@ -293,6 +321,8 @@ void process_file(const std::string &filename) {
                             weight_sum_emb3 += weight;
                         }
                     } else if (is_endcap) {
+                        weighted_sum_eme += adjusted_time * weight;
+                        weight_sum_eme += weight;
                         if (layer == 1) {
                             weighted_sum_eme1 += adjusted_time * weight;
                             weight_sum_eme1 += weight;
@@ -312,6 +342,20 @@ void process_file(const std::string &filename) {
                 float delta_event_time = event_time - vtx_time;
                 eventDeltaTimeHist->Fill(delta_event_time);
                 eventTimeHist->Fill(event_time);
+            }
+
+            if (weight_sum_emb > 0) {
+                float event_time_emb = weighted_sum_emb / weight_sum_emb;
+                float delta_event_time_emb = event_time_emb - vtx_time;
+                embDeltaTimeHist->Fill(delta_event_time_emb);
+                embTimeHist->Fill(event_time_emb);
+            }
+
+            if (weight_sum_eme > 0) {
+                float event_time_eme = weighted_sum_eme / weight_sum_eme;
+                float delta_event_time_eme = event_time_eme - vtx_time;
+                emeDeltaTimeHist->Fill(delta_event_time_eme);
+                emeTimeHist->Fill(event_time_eme);
             }
 
             if (weight_sum_emb1 > 0) {
@@ -409,6 +453,11 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
     eme2DeltaTimeHist->Write();
     eme3DeltaTimeHist->Write();
 
+    embDeltaTimeHist->Write();
+    emeDeltaTimeHist->Write();
+    embTimeHist->Write();
+    emeTimeHist->Write();
+
     outputFile->Close();
     delete outputFile;
     delete eventTimeHist;
@@ -426,6 +475,11 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
     delete eme1DeltaTimeHist;
     delete eme2DeltaTimeHist;
     delete eme3DeltaTimeHist;
+
+    delete embDeltaTimeHist;
+    delete emeDeltaTimeHist;
+    delete embTimeHist;
+    delete emeTimeHist;
 
     std::cout << "Event time reconstruction completed. Results saved to event_time_reconstruction.root" << std::endl;
     
