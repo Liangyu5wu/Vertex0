@@ -11,9 +11,9 @@
 #include <map>
 #include <string>
 
-//root -l "plot_focus.C(\"histograms_-5000_5000.root\", \"EMB3\")"
+//root -l "plot_inclusive_iterations.C(\"histograms_inclusive_5000.root\", \"EMB3\")"
 
-void plot_focus(const char* file_path = "histograms.root", 
+void plot_inclusive_iterations(const char* file_path = "histograms.root", 
                      const char* layer_name = "EMB3",
                      double chi2_threshold = 1.0,
                      int max_iterations = 5000) {
