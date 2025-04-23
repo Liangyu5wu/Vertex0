@@ -56,8 +56,8 @@ int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
 void initialize_histograms() {
-    const int bins = 450;
-    const double min_range = -2500;
+    const int bins = 400;
+    const double min_range = -2000;
     const double max_range = 2000;
     
     eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time (All Layers)", bins, min_range, max_range);
@@ -271,10 +271,10 @@ void process_file(const std::string &filename) {
                 float cell_y = cellY->at(j);
                 float cell_z = cellZ->at(j);
 
-                float distance_to_origin = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z) / 1000.0;
+                float distance_to_origin = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z);
                 float distance_vtx_to_cell = std::sqrt((cell_x - reco_vtx_x)*(cell_x - reco_vtx_x)
                                                      + (cell_y - reco_vtx_y)*(cell_y - reco_vtx_y)
-                                                     + (cell_z - reco_vtx_z)*(cell_z - reco_vtx_z)) / 1000.0;
+                                                     + (cell_z - reco_vtx_z)*(cell_z - reco_vtx_z));
                 float corrected_time = cell_time + distance_to_origin / c_light - distance_vtx_to_cell / c_light;
 
                 bool is_barrel = cellIsEMBarrel->at(j);
@@ -426,7 +426,7 @@ void processmu200_inclusive_reco(int startIndex = 1, int endIndex = 46) {
     std::cout << "Unmatched Vertices: " << unmatchedVertices << std::endl;
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
-    TFile *outputFile = new TFile("event_time_reconstruction.root", "RECREATE");
+    TFile *outputFile = new TFile("inclusive_reconstruction.root", "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
