@@ -9,7 +9,7 @@
 #include <TTree.h>
 #include <TH1F.h>
 
-const double c_light = 299792458;
+const double c_light = 0.299792458; // mm/ps
 
 const float emb1_y[7] = {45.58, 38.24, 30.64, 24.90, 23.00, 16.19, 12.12};
 const float emb1_ysigma[7] = {443.97, 318.89, 237.11, 181.55, 150.30, 142.56, 103.04};
