@@ -81,6 +81,14 @@ bool iterativeFitMethod2(TH1* hist, TF1* fit_function, double& mean, double& sig
     return good_fit;
 }
 
+void printVectorAsArray(const std::string& name, const std::vector<double>& vec) {
+    std::cout << name << " = [";
+    for (size_t i = 0; i < vec.size(); ++i) {
+        std::cout << vec[i] << (i < vec.size() - 1 ? ", " : "");
+    }
+    std::cout << "]" << std::endl;
+}
+
 void plot_inclusive_iterations(const char* file_path = "histograms.root", 
                      const char* layer_name = "EMB3",
                      double chi2_threshold = 1.0,
@@ -116,6 +124,11 @@ void plot_inclusive_iterations(const char* file_path = "histograms.root",
     canvas->Divide(4, 2);
     
     std::vector<TObject*> objects_to_keep;
+
+    std::vector<double> means;
+    std::vector<double> sigmas;
+    std::vector<double> chi2_values;
+    std::vector<int> iterations;
     
     for (size_t i = 0; i < hist_names.size(); ++i) {
         TPad* pad = (TPad*)canvas->cd(i+1);
@@ -124,6 +137,10 @@ void plot_inclusive_iterations(const char* file_path = "histograms.root",
         TH1* hist = (TH1*)root_file->Get(hist_names[i].c_str());
         if (!hist) {
             std::cerr << "Histogram " << hist_names[i] << " not found in file!" << std::endl;
+            means.push_back(std::numeric_limits<double>::quiet_NaN());
+            sigmas.push_back(std::numeric_limits<double>::quiet_NaN());
+            chi2_values.push_back(std::numeric_limits<double>::quiet_NaN());
+            iterations.push_back(-1);
             continue;
         }
         
@@ -152,6 +169,11 @@ void plot_inclusive_iterations(const char* file_path = "histograms.root",
             good_fit = iterativeFitMethod2(hist_clone, fit_function, mean, sigma, chi2_ndf, 
                                          iteration, fit_min, fit_max, chi2_threshold, max_iterations);
         }
+
+        means.push_back(mean);
+        sigmas.push_back(sigma);
+        chi2_values.push_back(chi2_ndf);
+        iterations.push_back(iteration + 1);
         
         fit_function->SetLineColor(kRed);
         fit_function->SetLineWidth(2);
@@ -197,6 +219,11 @@ void plot_inclusive_iterations(const char* file_path = "histograms.root",
     std::cout << "Histograms saved with iterative fitting (method = " << fit_method 
               << ", chi2 threshold = " << chi2_threshold 
               << ", max iterations = " << max_iterations << ")" << std::endl;
+
+    std::cout << "\n=== Fit Results for " << layer << " ===\n" << std::endl;
+    printVectorAsArray("means", means);
+    printVectorAsArray("sigmas", sigmas);
+    printVectorAsArray("chi2_values", chi2_values);
     
     root_file->Close();
     delete canvas;
