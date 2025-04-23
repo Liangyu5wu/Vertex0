@@ -71,6 +71,7 @@ void initialize_histograms() {
     eventDeltaTimeHist = new TH1F("eventDeltaTime", "Delta t0 (All Layers)", bins, min_range, max_range);
     eventDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
     eventDeltaTimeHist->GetYaxis()->SetTitle("Events");
+
     
     emb1TimeHist = new TH1F("emb1Time", "Reconstructed Event Time (EMB1 Only)", bins, min_range, max_range);
     emb1TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
@@ -119,6 +120,7 @@ void initialize_histograms() {
     eme3DeltaTimeHist = new TH1F("eme3DeltaTime", "Delta t0 (EME3 Only)", bins, min_range, max_range);
     eme3DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
     eme3DeltaTimeHist->GetYaxis()->SetTitle("Events");
+
 
     embDeltaTimeHist = new TH1F("embDeltaTime", "Delta t0 (EMB Only)", bins, min_range, max_range);
     embDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
@@ -228,13 +230,6 @@ void process_file(const std::string &filename) {
             float vtx_x = truthVtxX->at(i);
             float vtx_y = truthVtxY->at(i);
             float vtx_z = truthVtxZ->at(i);
-            double weighted_sum = 0.0;
-            double weight_sum = 0.0;
-            double weighted_sum_emb = 0.0;
-            double weight_sum_emb = 0.0;
-            double weighted_sum_eme = 0.0;
-            double weight_sum_eme = 0.0;
-
             truthTimeHist->Fill(vtx_time);
 
             bool foundRecoVtx = false;
@@ -256,6 +251,9 @@ void process_file(const std::string &filename) {
                 continue;
             }
 
+            double weighted_sum = 0.0, weight_sum = 0.0;
+            double weighted_sum_emb = 0.0, weight_sum_emb = 0.0;
+            double weighted_sum_eme = 0.0, weight_sum_eme = 0.0;
             double weighted_sum_emb1 = 0.0, weight_sum_emb1 = 0.0;
             double weighted_sum_emb2 = 0.0, weight_sum_emb2 = 0.0;
             double weighted_sum_emb3 = 0.0, weight_sum_emb3 = 0.0;
@@ -263,7 +261,6 @@ void process_file(const std::string &filename) {
             double weighted_sum_eme2 = 0.0, weight_sum_eme2 = 0.0;
             double weighted_sum_eme3 = 0.0, weight_sum_eme3 = 0.0;
 
-            
 
             for (size_t j = 0; j < cellE->size(); ++j) {
                 if (cellE->at(j) < 1.0) continue;
@@ -278,12 +275,11 @@ void process_file(const std::string &filename) {
                 float distance_vtx_to_cell = std::sqrt((cell_x - reco_vtx_x)*(cell_x - reco_vtx_x)
                                                      + (cell_y - reco_vtx_y)*(cell_y - reco_vtx_y)
                                                      + (cell_z - reco_vtx_z)*(cell_z - reco_vtx_z)) / 1000.0;
-                float corrected_time = cell_time
-                                     + distance_to_origin / c_light
-                                     - distance_vtx_to_cell / c_light;
+                float corrected_time = cell_time + distance_to_origin / c_light - distance_vtx_to_cell / c_light;
 
                 bool is_barrel = cellIsEMBarrel->at(j);
                 bool is_endcap = cellIsEMEndCap->at(j);
+
                 int layer = cellLayer->at(j);
                 float energy = cellE->at(j);
 
@@ -301,7 +297,6 @@ void process_file(const std::string &filename) {
                     float sigma = get_sigma(is_barrel, layer, bin);
                     
                     float adjusted_time = corrected_time - mean;
-                    
                     float weight = 1.0 / (sigma * sigma);
                     
                     weighted_sum += adjusted_time * weight;
