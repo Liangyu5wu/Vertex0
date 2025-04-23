@@ -13,10 +13,79 @@
 
 //root -l "plot_inclusive_iterations.C(\"histograms_inclusive_5000.root\", \"EMB3\")"
 
+bool iterativeFitMethod1(TH1* hist, TF1* fit_function, double& mean, double& sigma, 
+                         double& chi2_ndf, int& iteration, double& fit_min, 
+                         double& fit_max, double chi2_threshold, int max_iterations) {
+    bool good_fit = false;
+    while (!good_fit && iteration < max_iterations) {
+        hist->Fit(fit_function, "QS", "", fit_min, fit_max);
+        
+        mean = fit_function->GetParameter(1);
+        sigma = fit_function->GetParameter(2);
+        chi2_ndf = fit_function->GetChisquare() / fit_function->GetNDF();
+        
+        if (chi2_ndf < chi2_threshold) {
+            good_fit = true;
+        } else {
+            fit_min = mean - 2.0 * sigma;
+            fit_max = mean + 2.0 * sigma;
+            if (iteration > 1000) {
+                fit_min = mean - 1.7 * sigma;
+                fit_max = mean + 1.7 * sigma;
+            }
+            if (iteration > 3000) {
+                fit_min = mean - 1.5 * sigma;
+                fit_max = mean + 1.5 * sigma;
+            }
+            iteration++;
+        }
+    }
+    return good_fit;
+}
+
+bool iterativeFitMethod2(TH1* hist, TF1* fit_function, double& mean, double& sigma, 
+                         double& chi2_ndf, int& iteration, double& fit_min, 
+                         double& fit_max, double chi2_threshold, int max_iterations) {
+    bool good_fit = false;
+    while (!good_fit && iteration < max_iterations) {
+        hist->Fit(fit_function, "QS", "", fit_min, fit_max);
+        
+        mean = fit_function->GetParameter(1);
+        sigma = fit_function->GetParameter(2);
+        chi2_ndf = fit_function->GetChisquare() / fit_function->GetNDF();
+        
+        if (chi2_ndf < chi2_threshold) {
+            good_fit = true;
+        } else {
+            fit_min = mean - 2.0 * sigma;
+            fit_max = mean + 2.0 * sigma;
+            if (iteration > 1000) {
+                fit_min = mean - 1.7 * sigma;
+                fit_max = mean + 1.7 * sigma;
+            }
+            if (iteration > 2000) {
+                fit_min = mean - 1.5 * sigma;
+                fit_max = mean + 1.5 * sigma;
+            }
+            if (iteration > 3000) {
+                fit_min = mean - 1.0 * sigma;
+                fit_max = mean + 1.0 * sigma;
+            }
+            if (iteration > 4000) {
+                fit_min = mean - 0.7 * sigma;
+                fit_max = mean + 0.7 * sigma;
+            }
+            iteration++;
+        }
+    }
+    return good_fit;
+}
+
 void plot_inclusive_iterations(const char* file_path = "histograms.root", 
                      const char* layer_name = "EMB3",
                      double chi2_threshold = 1.0,
-                     int max_iterations = 5000) {
+                     int max_iterations = 5000,
+                     int fit_method = 2) {
     std::map<std::string, std::vector<std::string>> layers = {
         {"EMB1", {"EMB1_1-1.5", "EMB1_1.5-2", "EMB1_2-3", "EMB1_3-4", "EMB1_4-5", "EMB1_5-10", "EMB1_Above-10"}},
         {"EMB2", {"EMB2_1-1.5", "EMB2_1.5-2", "EMB2_2-3", "EMB2_3-4", "EMB2_4-5", "EMB2_5-10", "EMB2_Above-10"}},
@@ -76,54 +145,12 @@ void plot_inclusive_iterations(const char* file_path = "histograms.root",
         TF1* fit_function = new TF1(Form("gaus_fit_%zu", i), "gaus", fit_min, fit_max);
         objects_to_keep.push_back(fit_function);
         
-        std::vector<double> iteration_means;
-        std::vector<double> iteration_sigmas;
-        std::vector<double> iteration_chi2;
-        
-        while (!good_fit && iteration < max_iterations) {
-            hist_clone->Fit(fit_function, "QS", "", fit_min, fit_max);
-            
-            mean = fit_function->GetParameter(1);
-            sigma = fit_function->GetParameter(2);
-            chi2_ndf = fit_function->GetChisquare() / fit_function->GetNDF();
-            
-            iteration_means.push_back(mean);
-            iteration_sigmas.push_back(sigma);
-            iteration_chi2.push_back(chi2_ndf);
-            
-            if (chi2_ndf < chi2_threshold) {
-                good_fit = true;
-            } else {
-                // fit_min = mean - 2.0 * sigma;
-                // fit_max = mean + 2.0 * sigma;
-                // if (iteration > 1000) {
-                //     fit_min = mean - 1.7 * sigma;
-                //     fit_max = mean + 1.7 * sigma;
-                // }
-                // if (iteration > 3000) {
-                //     fit_min = mean - 1.5 * sigma;
-                //     fit_max = mean + 1.5 * sigma;
-                // }
-                fit_min = mean - 2.0 * sigma;
-                fit_max = mean + 2.0 * sigma;
-                if (iteration > 1000) {
-                    fit_min = mean - 1.7 * sigma;
-                    fit_max = mean + 1.7 * sigma;
-                }
-                if (iteration > 2000) {
-                    fit_min = mean - 1.5 * sigma;
-                    fit_max = mean + 1.5 * sigma;
-                }
-                if (iteration > 3000) {
-                    fit_min = mean - 1.0 * sigma;
-                    fit_max = mean + 1.0 * sigma;
-                }
-                if (iteration > 4000) {
-                    fit_min = mean - 0.7 * sigma;
-                    fit_max = mean + 0.7 * sigma;
-                }
-                iteration++;
-            }
+        if (fit_method == 1) {
+            good_fit = iterativeFitMethod1(hist_clone, fit_function, mean, sigma, chi2_ndf, 
+                                         iteration, fit_min, fit_max, chi2_threshold, max_iterations);
+        } else {
+            good_fit = iterativeFitMethod2(hist_clone, fit_function, mean, sigma, chi2_ndf, 
+                                         iteration, fit_min, fit_max, chi2_threshold, max_iterations);
         }
         
         fit_function->SetLineColor(kRed);
@@ -166,9 +193,10 @@ void plot_inclusive_iterations(const char* file_path = "histograms.root",
     }
     
     canvas->Update();
-    canvas->SaveAs(Form("%s_Histograms_IterativeFit.png", layer.c_str()));
-    std::cout << "Histograms saved with iterative fitting (chi2 threshold = " 
-              << chi2_threshold << ", max iterations = " << max_iterations << ")" << std::endl;
+    canvas->SaveAs(Form("%s_Histograms_IterativeFit_Method%d.png", layer.c_str(), fit_method));
+    std::cout << "Histograms saved with iterative fitting (method = " << fit_method 
+              << ", chi2 threshold = " << chi2_threshold 
+              << ", max iterations = " << max_iterations << ")" << std::endl;
     
     root_file->Close();
     delete canvas;
