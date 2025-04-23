@@ -166,7 +166,7 @@ void process_file(const std::string &filename) {
 void processmu200_inclusive(int startIndex = 1, int endIndex = 46) {
     initialize_histograms();
 
-    const std::string path = ".";
+    const std::string path = "./SuperNtuple_mu200";
     for (int i = startIndex; i <= endIndex; ++i) {
         std::ostringstream filename;
         filename << path << "/user.scheong.43348828.Output._" 
