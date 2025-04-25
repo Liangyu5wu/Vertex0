@@ -9,7 +9,7 @@
 #include <TTree.h>
 #include <TH1F.h>
 
-const double c_light = 299792458;
+const double c_light = 0.299792458; // mm/ps
 
 TH1F *embHist[3][7][3];
 TH1F *emeHist[3][7][3];
@@ -160,10 +160,10 @@ void process_file(const std::string &filename) {
                 float cell_eta = cellEta->at(j);
                 float cell_phi = cellPhi->at(j);
 
-                float distance_to_origin = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z) / 1000.0;
+                float distance_to_origin = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z);
                 float distance_vtx_to_cell = std::sqrt((cell_x - vtx_x)*(cell_x - vtx_x)
                                                      + (cell_y - vtx_y)*(cell_y - vtx_y)
-                                                     + (cell_z - vtx_z)*(cell_z - vtx_z)) / 1000.0;
+                                                     + (cell_z - vtx_z)*(cell_z - vtx_z));
                 float corrected_time = cell_time
                                      + distance_to_origin / c_light
                                      - distance_vtx_to_cell / c_light
@@ -267,7 +267,7 @@ void process_file(const std::string &filename) {
 void processmu200_track_origin(int startIndex = 1, int endIndex = 46) {
     initialize_histograms();
 
-    const std::string path = ".";
+    const std::string path = "./SuperNtuple_mu200";
     for (int i = startIndex; i <= endIndex; ++i) {
         std::ostringstream filename;
         filename << path << "/user.scheong.43348828.Output._" 
