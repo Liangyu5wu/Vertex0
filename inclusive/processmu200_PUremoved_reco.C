@@ -440,12 +440,15 @@ void process_file(const std::string &filename) {
 
                     if (track_type==1) continue;
 
+                    float mean = 0;
+                    float sigma = 0;
+
                     if (track_type==0) {
-                        float mean = get_mean(is_barrel, layer, bin);
-                        float sigma = get_sigma(is_barrel, layer, bin);
+                        mean = get_mean(is_barrel, layer, bin);
+                        sigma = get_sigma(is_barrel, layer, bin);
                     } else if (track_type==2) {
-                        float mean = get_mean_other(is_barrel, layer, bin);
-                        float sigma = get_sigma_other(is_barrel, layer, bin);
+                        mean = get_mean_other(is_barrel, layer, bin);
+                        sigma = get_sigma_other(is_barrel, layer, bin);
                     }
                     
                     float adjusted_time = corrected_time - mean;
