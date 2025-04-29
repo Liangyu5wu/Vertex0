@@ -578,7 +578,7 @@ void processmu200_PUremoved_reco(int startIndex = 1, int endIndex = 46) {
     std::cout << "Unmatched Vertices: " << unmatchedVertices << std::endl;
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
-    TFile *outputFile = new TFile("HSonly_reconstruction.root", "RECREATE");
+    TFile *outputFile = new TFile("PUremoved_reconstruction.root", "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
@@ -628,6 +628,6 @@ void processmu200_PUremoved_reco(int startIndex = 1, int endIndex = 46) {
     delete embTimeHist;
     delete emeTimeHist;
 
-    std::cout << "Event time reconstruction completed. Results saved to HSonly_reconstruction.root" << std::endl;
+    std::cout << "Event time reconstruction completed. Results saved to PUremoved_reconstruction.root" << std::endl;
     
 }
