@@ -71,6 +71,10 @@ TH1F *emeTimeHist;
 TH1F *embDeltaTimeHist;
 TH1F *emeDeltaTimeHist;
 
+TH1F *eventCellHist;
+TH1F *emeCellHist;
+TH1F *embCellHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
