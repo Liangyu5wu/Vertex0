@@ -441,7 +441,7 @@ void processmu200_inclusive_reco(float energyThreshold = 1.0, int startIndex = 1
     unmatchedVertices = 0;
     initialize_histograms();
 
-    const std::string path = "./SuperNtuple_mu200";
+    const std::string path = "../SuperNtuple_mu200";
     for (int i = startIndex; i <= endIndex; ++i) {
         std::ostringstream filename;
         filename << path << "/user.scheong.43348828.Output._" 
