@@ -53,6 +53,10 @@ TH1F *emeTimeHist;
 TH1F *embDeltaTimeHist;
 TH1F *emeDeltaTimeHist;
 
+TH1F *eventCellHist;
+TH1F *emeCellHist;
+TH1F *embCellHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
@@ -138,6 +142,22 @@ void initialize_histograms() {
     emeTimeHist = new TH1F("emeTime", "Reconstructed Event Time (EME Only)", bins, min_range, max_range);
     emeTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     emeTimeHist->GetYaxis()->SetTitle("Events");
+
+
+
+    eventCellHist = new TH1F("eventCell", "Cells Used", 1000, 0, 8000);
+    eventCellHist->GetXaxis()->SetTitle("Cells Used");
+    eventCellHist->GetYaxis()->SetTitle("Events");
+
+    emeCellHist = new TH1F("emeCell", "Cells Used (EME Only)", 1000, 0, 8000);
+    emeCellHist->GetXaxis()->SetTitle("Cells Used");
+    emeCellHist->GetYaxis()->SetTitle("Events");
+
+    embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 1000, 0, 8000);
+    embCellHist->GetXaxis()->SetTitle("Cells Used");
+    embCellHist->GetYaxis()->SetTitle("Events");
+
+
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -223,6 +243,10 @@ void process_file(const std::string &filename) {
     for (Long64_t entry = 0; entry < nEntries; ++entry) {
         tree->GetEntry(entry);
 
+        int all_cell_used_counter = 0;
+        int emb_cell_used_counter = 0;
+        int eme_cell_used_counter = 0;
+
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
             if (!truthVtxIsHS->at(i)) continue;
             totalTruthVertices++;
@@ -281,6 +305,7 @@ void process_file(const std::string &filename) {
                 bool is_barrel = cellIsEMBarrel->at(j);
                 bool is_endcap = cellIsEMEndCap->at(j);
 
+
                 int layer = cellLayer->at(j);
                 float energy = cellE->at(j);
 
@@ -302,8 +327,10 @@ void process_file(const std::string &filename) {
                     
                     weighted_sum += adjusted_time * weight;
                     weight_sum += weight;
+                    all_cell_used_counter++;
 
                     if (is_barrel) {
+                        emb_cell_used_counter++;
                         weighted_sum_emb += adjusted_time * weight;
                         weight_sum_emb += weight;
                         if (layer == 1) {
@@ -317,6 +344,7 @@ void process_file(const std::string &filename) {
                             weight_sum_emb3 += weight;
                         }
                     } else if (is_endcap) {
+                        eme_cell_used_counter++;
                         weighted_sum_eme += adjusted_time * weight;
                         weight_sum_eme += weight;
                         if (layer == 1) {
@@ -332,6 +360,11 @@ void process_file(const std::string &filename) {
                     }
                 }
             }
+
+            eventCellHist->Fill(all_cell_used_counter);
+            embCellHist->Fill(emb_cell_used_counter);
+            emeCellHist->Fill(eme_cell_used_counter);
+
 
             if (weight_sum > 0) {
                 float event_time = weighted_sum / weight_sum;
@@ -454,7 +487,13 @@ void processmu200_inclusive_reco_cellcounting(int startIndex = 1, int endIndex =
     embTimeHist->Write();
     emeTimeHist->Write();
 
+    eventCellHist->Write();
+    embCellHist->Write();
+    emeCellHist->Write();
+
+
     outputFile->Close();
+
     delete outputFile;
     delete eventTimeHist;
     delete eventDeltaTimeHist;
@@ -476,6 +515,11 @@ void processmu200_inclusive_reco_cellcounting(int startIndex = 1, int endIndex =
     delete emeDeltaTimeHist;
     delete embTimeHist;
     delete emeTimeHist;
+
+    delete eventCellHist;
+    delete embCellHist;
+    delete emeCellHist;
+
 
     std::cout << "Event time reconstruction completed. Results saved to event_time_reconstruction.root" << std::endl;
     
