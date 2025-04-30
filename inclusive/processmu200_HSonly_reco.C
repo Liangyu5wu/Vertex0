@@ -528,7 +528,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_inclusive_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46) {
+void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46) {
     totalTruthVertices = 0;
     unmatchedVertices = 0;
     initialize_histograms();
