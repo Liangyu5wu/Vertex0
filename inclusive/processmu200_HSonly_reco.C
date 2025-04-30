@@ -553,7 +553,7 @@ void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endI
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
     std::ostringstream outputFilename;
-    outputFilename << "inclusive_reconstruction_E"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
+    outputFilename << "HSonly_reconstruction_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
 
     if (!outputFile || outputFile->IsZombie()) {
