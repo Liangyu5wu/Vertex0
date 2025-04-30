@@ -186,7 +186,7 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
     return 1.0;
 }
 
-void process_file(const std::string &filename) {
+void process_file(const std::string &filename, float energyThreshold = 1.0) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -288,7 +288,7 @@ void process_file(const std::string &filename) {
 
 
             for (size_t j = 0; j < cellE->size(); ++j) {
-                if (cellE->at(j) < 1.0) continue;
+                if (cellE->at(j) < energyThreshold) continue;
                 if (cellSignificance->at(j) < 4.0) continue;
 
                 float cell_time = cellTime->at(j);
@@ -436,7 +436,7 @@ void process_file(const std::string &filename) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_inclusive_reco_cellcounting(int startIndex = 1, int endIndex = 46) {
+void processmu200_inclusive_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46) {
     totalTruthVertices = 0;
     unmatchedVertices = 0;
     initialize_histograms();
@@ -449,7 +449,7 @@ void processmu200_inclusive_reco_cellcounting(int startIndex = 1, int endIndex =
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str());
+            process_file(filename.str(), energyThreshold);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -460,7 +460,10 @@ void processmu200_inclusive_reco_cellcounting(int startIndex = 1, int endIndex =
     std::cout << "Unmatched Vertices: " << unmatchedVertices << std::endl;
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
-    TFile *outputFile = new TFile("inclusive_reconstruction.root", "RECREATE");
+    std::ostringstream outputFilename;
+    outputFilename << "inclusive_reconstruction_E"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
+
+    TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
@@ -521,6 +524,6 @@ void processmu200_inclusive_reco_cellcounting(int startIndex = 1, int endIndex =
     delete emeCellHist;
 
 
-    std::cout << "Event time reconstruction completed. Results saved to event_time_reconstruction.root" << std::endl;
+    std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
     
 }
