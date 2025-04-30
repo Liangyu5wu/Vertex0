@@ -264,7 +264,7 @@ void process_file(const std::string &filename) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_track_origin(int startIndex = 1, int endIndex = 46) {
+void processmu200_cali(int startIndex = 1, int endIndex = 46) {
     initialize_histograms();
 
     const std::string path = "./SuperNtuple_mu200";
@@ -281,7 +281,7 @@ void processmu200_track_origin(int startIndex = 1, int endIndex = 46) {
         }
     }
 
-    TFile *outputFile = new TFile("histograms_varied_ranges_noupbound.root", "RECREATE");
+    TFile *outputFile = new TFile("histograms_track_cali.root", "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
