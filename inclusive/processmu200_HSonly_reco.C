@@ -53,6 +53,10 @@ TH1F *emeTimeHist;
 TH1F *embDeltaTimeHist;
 TH1F *emeDeltaTimeHist;
 
+TH1F *eventCellHist;
+TH1F *emeCellHist;
+TH1F *embCellHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
@@ -138,6 +142,18 @@ void initialize_histograms() {
     emeTimeHist = new TH1F("emeTime", "Reconstructed Event Time (EME Only)", bins, min_range, max_range);
     emeTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     emeTimeHist->GetYaxis()->SetTitle("Events");
+
+    eventCellHist = new TH1F("eventCell", "Cells Used", 500, 0, 500);
+    eventCellHist->GetXaxis()->SetTitle("Cells Used");
+    eventCellHist->GetYaxis()->SetTitle("Events");
+
+    emeCellHist = new TH1F("emeCell", "Cells Used (EME Only)", 500, 0, 500);
+    emeCellHist->GetXaxis()->SetTitle("Cells Used");
+    emeCellHist->GetYaxis()->SetTitle("Events");
+
+    embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 500, 0, 500);
+    embCellHist->GetXaxis()->SetTitle("Cells Used");
+    embCellHist->GetYaxis()->SetTitle("Events");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -166,7 +182,7 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
     return 1.0;
 }
 
-void process_file(const std::string &filename) {
+void process_file(const std::string &filename, float energyThreshold = 1.0) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -259,6 +275,10 @@ void process_file(const std::string &filename) {
     for (Long64_t entry = 0; entry < nEntries; ++entry) {
         tree->GetEntry(entry);
 
+        int all_cell_used_counter = 0;
+        int emb_cell_used_counter = 0;
+        int eme_cell_used_counter = 0;
+
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
             if (!truthVtxIsHS->at(i)) continue;
             totalTruthVertices++;
@@ -300,7 +320,7 @@ void process_file(const std::string &filename) {
 
 
             for (size_t j = 0; j < cellE->size(); ++j) {
-                if (cellE->at(j) < 1.0) continue;
+                if (cellE->at(j) < energyThreshold) continue;
                 if (cellSignificance->at(j) < 4.0) continue;
 
                 float cell_time = cellTime->at(j);
@@ -400,7 +420,10 @@ void process_file(const std::string &filename) {
                     weighted_sum += adjusted_time * weight;
                     weight_sum += weight;
 
+                    all_cell_used_counter++;
+
                     if (is_barrel) {
+                        emb_cell_used_counter++;
                         weighted_sum_emb += adjusted_time * weight;
                         weight_sum_emb += weight;
                         if (layer == 1) {
@@ -414,6 +437,7 @@ void process_file(const std::string &filename) {
                             weight_sum_emb3 += weight;
                         }
                     } else if (is_endcap) {
+                        eme_cell_used_counter++;
                         weighted_sum_eme += adjusted_time * weight;
                         weight_sum_eme += weight;
                         if (layer == 1) {
@@ -429,6 +453,10 @@ void process_file(const std::string &filename) {
                     }
                 }
             }
+
+            eventCellHist->Fill(all_cell_used_counter);
+            embCellHist->Fill(emb_cell_used_counter);
+            emeCellHist->Fill(eme_cell_used_counter);
 
             if (weight_sum > 0) {
                 float event_time = weighted_sum / weight_sum;
@@ -500,7 +528,7 @@ void process_file(const std::string &filename) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_HSonly_reco(int startIndex = 1, int endIndex = 46) {
+void processmu200_inclusive_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46) {
     totalTruthVertices = 0;
     unmatchedVertices = 0;
     initialize_histograms();
@@ -513,7 +541,7 @@ void processmu200_HSonly_reco(int startIndex = 1, int endIndex = 46) {
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str());
+            process_file(filename.str(), energyThreshold);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -524,7 +552,10 @@ void processmu200_HSonly_reco(int startIndex = 1, int endIndex = 46) {
     std::cout << "Unmatched Vertices: " << unmatchedVertices << std::endl;
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
-    TFile *outputFile = new TFile("HSonly_reconstruction.root", "RECREATE");
+    std::ostringstream outputFilename;
+    outputFilename << "inclusive_reconstruction_E"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
+    TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
+
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
@@ -551,6 +582,10 @@ void processmu200_HSonly_reco(int startIndex = 1, int endIndex = 46) {
     embTimeHist->Write();
     emeTimeHist->Write();
 
+    eventCellHist->Write();
+    embCellHist->Write();
+    emeCellHist->Write();
+
     outputFile->Close();
     delete outputFile;
     delete eventTimeHist;
@@ -574,6 +609,11 @@ void processmu200_HSonly_reco(int startIndex = 1, int endIndex = 46) {
     delete embTimeHist;
     delete emeTimeHist;
 
-    std::cout << "Event time reconstruction completed. Results saved to HSonly_reconstruction.root" << std::endl;
+    delete eventCellHist;
+    delete embCellHist;
+    delete emeCellHist;
+ 
+ 
+    std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
     
 }
