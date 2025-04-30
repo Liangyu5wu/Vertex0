@@ -145,15 +145,15 @@ void initialize_histograms() {
 
 
 
-    eventCellHist = new TH1F("eventCell", "Cells Used", 1000, 0, 8000);
+    eventCellHist = new TH1F("eventCell", "Cells Used", 400, 0, 400);
     eventCellHist->GetXaxis()->SetTitle("Cells Used");
     eventCellHist->GetYaxis()->SetTitle("Events");
 
-    emeCellHist = new TH1F("emeCell", "Cells Used (EME Only)", 1000, 0, 8000);
+    emeCellHist = new TH1F("emeCell", "Cells Used (EME Only)", 400, 0, 400);
     emeCellHist->GetXaxis()->SetTitle("Cells Used");
     emeCellHist->GetYaxis()->SetTitle("Events");
 
-    embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 1000, 0, 8000);
+    embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 400, 0, 400);
     embCellHist->GetXaxis()->SetTitle("Cells Used");
     embCellHist->GetYaxis()->SetTitle("Events");
 
