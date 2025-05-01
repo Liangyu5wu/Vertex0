@@ -20,7 +20,7 @@ void compareEventCellHistograms(
     double xMax = 300
 ) {
     // Turn off statistics box
-    gStyle->SetOptStat(0);
+    gStyle->SetOptStat(1);
     
     // Open the first file
     TFile *file1 = new TFile(file1Name, "READ");
