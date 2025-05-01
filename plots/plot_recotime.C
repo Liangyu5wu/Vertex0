@@ -9,23 +9,31 @@
 #include <TPaveText.h>
 #include <TMath.h>
 #include <TLatex.h>
+#include <string>
 
-void plotAndFitHistograms() {
-
+void plotAndFitHistograms(
+    int mode = 0,                                         // 0 = Delta t0, 1 = Reconstruction Time
+    const char* inputFile = "HSonly_PUcells_removed_reco_Eover1.root", // Input ROOT file
+    const char* outputBase = "HSonly_PUremoved",          // Base name for output file
+    double fitMin = -120,                                 // Lower bound for fit range
+    double fitMax = 120                                   // Upper bound for fit range
+) {
+    bool isDeltaT0 = (mode == 0);
+    
     gStyle->SetOptStat(0);      
     gStyle->SetOptFit(0);    
     
-    // TFile *file = new TFile("HSonly_reconstruction_2GeV.root", "READ");
-    TFile *file = new TFile("PUremoved_reconstruction_2GeV.root", "READ");
+    TFile *file = new TFile(inputFile, "READ");
     if (!file || file->IsZombie()) {
-        std::cerr << "Error: Cannot open the file event_time_reconstruction.root" << std::endl;
+        std::cerr << "Error: Cannot open the file " << inputFile << std::endl;
         return;
     }
     
-    TH1 *eventTimeHist = (TH1*)file->Get("eventDeltaTime");
-    TH1 *truthTimeHist = (TH1*)file->Get("embDeltaTime");
-    // TH1 *eventTimeHist = (TH1*)file->Get("eventTime");
-    // TH1 *truthTimeHist = (TH1*)file->Get("embTime");
+    const char* histName1 = isDeltaT0 ? "eventDeltaTime" : "eventTime";
+    const char* histName2 = isDeltaT0 ? "embDeltaTime" : "embTime";
+    
+    TH1 *eventTimeHist = (TH1*)file->Get(histName1);
+    TH1 *truthTimeHist = (TH1*)file->Get(histName2);
     
     if (!eventTimeHist || !truthTimeHist) {
         std::cerr << "Error: Cannot find one or both histograms in the file" << std::endl;
@@ -36,8 +44,8 @@ void plotAndFitHistograms() {
     TH1 *eventTimeClone = (TH1*)eventTimeHist->Clone("eventTimeClone");
     TH1 *truthTimeClone = (TH1*)truthTimeHist->Clone("truthTimeClone");
     
-    TCanvas *canvas = new TCanvas("canvas", "Delta t0", 900, 600);
-    // TCanvas *canvas = new TCanvas("canvas", "Reconstruction Time", 900, 600);
+    const char* canvasTitle = isDeltaT0 ? "Delta t0" : "Reconstruction Time";
+    TCanvas *canvas = new TCanvas("canvas", canvasTitle, 900, 600);
     canvas->SetGrid();
     
     eventTimeClone->SetLineColor(kBlue);
@@ -50,17 +58,14 @@ void plotAndFitHistograms() {
     truthTimeClone->SetFillColor(kRed-10);
     truthTimeClone->SetFillStyle(3005);
     
-    eventTimeClone->SetTitle("Delta t0;Time (ps);Entries");
-    // eventTimeClone->SetTitle("Reconstruction Time;Time (ps);Entries");
+    const char* plotTitle = isDeltaT0 ? "Delta t0;Time (ps);Entries" : "Reconstruction Time;Time (ps);Entries";
+    eventTimeClone->SetTitle(plotTitle);
     
     double eventTimeMax = eventTimeClone->GetMaximum();
     double truthTimeMax = truthTimeClone->GetMaximum();
     double maxY = std::max(eventTimeMax, truthTimeMax) * 1.1; 
     
     eventTimeClone->SetMaximum(maxY);
-    
-    double fitMin = -120;
-    double fitMax = 120;
     
     TF1 *eventTimeFit = new TF1("eventTimeFit", "gaus", fitMin, fitMax);
     TF1 *truthTimeFit = new TF1("truthTimeFit", "gaus", fitMin, fitMax);
@@ -116,13 +121,23 @@ void plotAndFitHistograms() {
     TText *eme1SigmaText = fitInfo->AddText(eme1Sigma);
     eme1SigmaText->SetTextColor(kRed);
     
+    char fitRangeText[100];
+    sprintf(fitRangeText, "Fit Range: [%.0f, %.0f] ps", fitMin, fitMax);
+    TText *fitRangeInfo = fitInfo->AddText(fitRangeText);
+    fitRangeInfo->SetTextColor(kBlack);
+    
     fitInfo->Draw();
     
     TLegend *legend = new TLegend(0.65, 0.75, 0.89, 0.89);
-    legend->AddEntry(eventTimeClone, "All layers Delta t0", "lf");
-    legend->AddEntry(truthTimeClone, "EMB-only Delta t0", "lf");
-    // legend->AddEntry(eventTimeClone, "All layers Reconstruction Time", "lf");
-    // legend->AddEntry(truthTimeClone, "EMB-only Reconstruction Time", "lf");
+    
+    if (isDeltaT0) {
+        legend->AddEntry(eventTimeClone, "All layers Delta t0", "lf");
+        legend->AddEntry(truthTimeClone, "EMB-only Delta t0", "lf");
+    } else {
+        legend->AddEntry(eventTimeClone, "All layers Reconstruction Time", "lf");
+        legend->AddEntry(truthTimeClone, "EMB-only Reconstruction Time", "lf");
+    }
+    
     legend->AddEntry(eventTimeFit, "All layers Fit", "l");
     legend->AddEntry(truthTimeFit, "EMB-only Fit", "l");
     legend->SetBorderSize(0);
@@ -131,24 +146,25 @@ void plotAndFitHistograms() {
     
     canvas->Update();
     
-    // canvas->SaveAs("embonly_reco_time.png");
-    // canvas->SaveAs("embonly_Delta_t0.png");
-    // canvas->SaveAs("embonly_reco_time_PUremoved.png");
-    canvas->SaveAs("embonly_Delta_t0_PUremoved.png");
+    std::string outputFile;
     
-    std::cout << "Event Time Fit Results (range: -1000 to 500 ps):" << std::endl;
-    std::cout << "  Mean = " << eventTimeFit->GetParameter(1) << " ± " << eventTimeFit->GetParError(1) << " ns" << std::endl;
-    std::cout << "  Sigma = " << eventTimeFit->GetParameter(2) << " ± " << eventTimeFit->GetParError(2) << " ns" << std::endl;
+    if (isDeltaT0) {
+        outputFile = "embonly_Delta_t0_" + std::string(outputBase) + ".png";
+    } else {
+        outputFile = "embonly_reco_time_" + std::string(outputBase) + ".png";
+    }
     
-    std::cout << "\nTruth Time Fit Results (range: -1000 to 500 ps):" << std::endl;
-    std::cout << "  Mean = " << truthTimeFit->GetParameter(1) << " ± " << truthTimeFit->GetParError(1) << " ns" << std::endl;
-    std::cout << "  Sigma = " << truthTimeFit->GetParameter(2) << " ± " << truthTimeFit->GetParError(2) << " ns" << std::endl;
+    canvas->SaveAs(outputFile.c_str());
+    
+    const char* resultType = isDeltaT0 ? "Delta t0" : "Reconstruction Time";
+    std::cout << "Event " << resultType << " Fit Results (range: " << fitMin << " to " << fitMax << " ps):" << std::endl;
+    std::cout << "  Mean = " << eventTimeFit->GetParameter(1) << " ± " << eventTimeFit->GetParError(1) << " ps" << std::endl;
+    std::cout << "  Sigma = " << eventTimeFit->GetParameter(2) << " ± " << eventTimeFit->GetParError(2) << " ps" << std::endl;
+    
+    std::cout << "\nEMB-only " << resultType << " Fit Results (range: " << fitMin << " to " << fitMax << " ps):" << std::endl;
+    std::cout << "  Mean = " << truthTimeFit->GetParameter(1) << " ± " << truthTimeFit->GetParError(1) << " ps" << std::endl;
+    std::cout << "  Sigma = " << truthTimeFit->GetParameter(2) << " ± " << truthTimeFit->GetParError(2) << " ps" << std::endl;
     
     file->Close();
     delete file;
-}
-
-int main() {
-    plotAndFitHistograms();
-    return 0;
 }
