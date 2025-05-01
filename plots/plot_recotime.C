@@ -11,6 +11,10 @@
 #include <TLatex.h>
 #include <string>
 
+// plotAndFitHistograms(0, "HSonly_PUcells_removed_reco_Eover1.root", "HSonly_PUremoved", -120, 120)
+// plotAndFitHistograms(1, "HSonly_PUcells_removed_reco_Eover1.root", "HSonly_PUremoved", -300, 300)
+
+
 void plotAndFitHistograms(
     int mode = 0,                                         // 0 = Delta t0, 1 = Reconstruction Time
     const char* inputFile = "HSonly_PUcells_removed_reco_Eover1.root", // Input ROOT file
