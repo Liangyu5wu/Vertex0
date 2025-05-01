@@ -30,6 +30,24 @@ const float eme2_ysigma[7] = {1708.6, 1243.34, 881.465, 627.823, 486.99, 311.032
 const float eme3_y[7] = {189.356, 140.293, 111.232, 86.8784, 69.0834, 60.5034, 38.5008};
 const float eme3_ysigma[7] = {1137.06, 803.044, 602.152, 403.393, 318.327, 210.827, 99.697};
 
+const float emb1_y_other[7] = {36.9907, 31.6297, 23.3058, 22.1508, 19.9411, 20.0621, 13.2032};
+const float emb1_ysigma_other[7] = {446.145, 318.764, 218.604, 150.165, 112.783, 110.221, 65.0716};
+
+const float emb2_y_other[7] = {-80.6155, -50.2005, -15.1386, 3.38545, 8.169, 12.499, 11.2227};
+const float emb2_ysigma_other[7] = {2246.95, 1566.63, 1113.63, 757.594, 585.888, 366.924, 164.896};
+
+const float emb3_y_other[7] = {10.3009, 53.2832, 48.871, 15.1057, -45.8404, -13.5722, -104.663};
+const float emb3_ysigma_other[7] = {1457.32, 997.318, 614.644, 1108.97, 1121.82, 765.746, 753.815};
+
+const float eme1_y_other[7] = {113.724, 100.906, 70.6894, 57.0218, 36.8816, 25.4732, -5.31215};
+const float eme1_ysigma_other[7] = {1053.85, 770.937, 626.73, 476.36, 392.959, 249.735, 703.556};
+
+const float eme2_y_other[7] = {120.071, 113.272, 102.352, 85.0058, 63.9029, 54.7826, 34.4788};
+const float eme2_ysigma_other[7] = {1765.17, 1300.15, 947.615, 687.715, 562.804, 389.652, 142.613};
+
+const float eme3_y_other[7] = {110.006, 81.6894, 88.486, 63.1186, 50.5858, 53.1394, 42.3468};
+const float eme3_ysigma_other[7] = {1201.55, 871.762, 669.989, 464.128, 411.665, 212.056, 95.9126};
+
 TH1F *eventTimeHist;
 TH1F *truthTimeHist;
 TH1F *eventDeltaTimeHist;
@@ -178,6 +196,32 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
         if (layer == 1) return eme1_ysigma[energy_bin];
         else if (layer == 2) return eme2_ysigma[energy_bin];
         else if (layer == 3) return eme3_ysigma[energy_bin];
+    }
+    return 1.0;
+}
+
+float get_mean_other(bool is_barrel, int layer, int energy_bin) {
+    if (is_barrel) {
+        if (layer == 1) return emb1_y_other[energy_bin];
+        else if (layer == 2) return emb2_y_other[energy_bin];
+        else if (layer == 3) return emb3_y_other[energy_bin];
+    } else { // is_endcap
+        if (layer == 1) return eme1_y_other[energy_bin];
+        else if (layer == 2) return eme2_y_other[energy_bin];
+        else if (layer == 3) return eme3_y_other[energy_bin];
+    }
+    return 0.0;
+}
+
+float get_sigma_other(bool is_barrel, int layer, int energy_bin) {
+    if (is_barrel) {
+        if (layer == 1) return emb1_ysigma_other[energy_bin];
+        else if (layer == 2) return emb2_ysigma_other[energy_bin];
+        else if (layer == 3) return emb3_ysigma_other[energy_bin];
+    } else { // is_endcap
+        if (layer == 1) return eme1_ysigma_other[energy_bin];
+        else if (layer == 2) return eme2_ysigma_other[energy_bin];
+        else if (layer == 3) return eme3_ysigma_other[energy_bin];
     }
     return 1.0;
 }
@@ -414,11 +458,25 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
                         }
                     }
 
-                    if (found_non_HS_match) continue;
-                    if (!matched_track_HS) continue;
+                    int track_type = 2;
+                    if (matched_track_pt > 0) {
+                        track_type = matched_track_HS ? 0 : 1;
+                    }
 
-                    float mean = get_mean(is_barrel, layer, bin);
-                    float sigma = get_sigma(is_barrel, layer, bin);
+                    if (track_type==1) continue;
+                    if (found_non_HS_match) continue;
+                    if (track_type==2 && is_endcap && layer != 1) continue;
+
+                    float mean = 0;
+                    float sigma = 0;
+
+                    if (track_type==0) {
+                        mean = get_mean(is_barrel, layer, bin);
+                        sigma = get_sigma(is_barrel, layer, bin);
+                    } else if (track_type==2) {
+                        mean = get_mean_other(is_barrel, layer, bin);
+                        sigma = get_sigma_other(is_barrel, layer, bin);
+                    }
                     
                     float adjusted_time = corrected_time - mean;
                     float weight = 1.0 / (sigma * sigma);
@@ -559,7 +617,7 @@ void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endI
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
     std::ostringstream outputFilename;
-    outputFilename << "HSonly_PUcells_removed_reco_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
+    outputFilename << "HSonly_PUcells_removed_plus_unmatchedemb1_reco_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
 
     if (!outputFile || outputFile->IsZombie()) {
