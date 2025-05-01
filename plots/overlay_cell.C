@@ -19,17 +19,16 @@ void compareEventCellHistograms(
     double xMin = 0,
     double xMax = 300
 ) {
-    // Turn off statistics box
+
     gStyle->SetOptStat(1);
     
-    // Open the first file
+
     TFile *file1 = new TFile(file1Name, "READ");
     if (!file1 || file1->IsZombie()) {
         std::cerr << "Error: Cannot open file: " << file1Name << std::endl;
         return;
     }
     
-    // Open the second file
     TFile *file2 = new TFile(file2Name, "READ");
     if (!file2 || file2->IsZombie()) {
         std::cerr << "Error: Cannot open file: " << file2Name << std::endl;
@@ -38,7 +37,6 @@ void compareEventCellHistograms(
         return;
     }
     
-    // Get histograms from files
     TH1 *hist1 = (TH1*)file1->Get(histName);
     if (!hist1) {
         std::cerr << "Error: Cannot find histogram '" << histName << "' in file: " << file1Name << std::endl;
@@ -59,15 +57,12 @@ void compareEventCellHistograms(
         return;
     }
     
-    // Create clones of the histograms to avoid modifying the originals
     TH1 *hist1Clone = (TH1*)hist1->Clone("hist1Clone");
     TH1 *hist2Clone = (TH1*)hist2->Clone("hist2Clone");
     
-    // Create a canvas
     TCanvas *canvas = new TCanvas("canvas", "Histogram Comparison", 900, 600);
     canvas->SetGrid();
     
-    // Set different colors and styles for the histograms
     hist1Clone->SetLineColor(kBlue);
     hist1Clone->SetLineWidth(2);
     hist1Clone->SetFillColor(kBlue-10);
@@ -78,44 +73,39 @@ void compareEventCellHistograms(
     hist2Clone->SetFillColor(kRed-10);
     hist2Clone->SetFillStyle(3005);
     
-    // Set the title
     hist1Clone->SetTitle(Form("%s Comparison;%s;Entries", histName, hist1Clone->GetXaxis()->GetTitle()));
     
-    // Find the maximum y value for proper scaling
+
     double max1 = hist1Clone->GetMaximum();
     double max2 = hist2Clone->GetMaximum();
-    double maxY = std::max(max1, max2) * 1.1; // Add 10% margin
+    double maxY = std::max(max1, max2) * 1.1;
     
     hist1Clone->SetMaximum(maxY);
     
-    // Set custom X axis range if specified
     if (xMin != -999 && xMax != -999) {
         hist1Clone->GetXaxis()->SetRangeUser(xMin, xMax);
         hist2Clone->GetXaxis()->SetRangeUser(xMin, xMax);
         std::cout << "Setting X axis range: [" << xMin << ", " << xMax << "]" << std::endl;
     }
     
-    // Draw the histograms
     hist1Clone->Draw();
     hist2Clone->Draw("SAME");
     
     // Create a legend
-    TLegend *legend = new TLegend(0.7, 0.75, 0.89, 0.89);
-    legend->AddEntry(hist1Clone, label1, "lf");
-    legend->AddEntry(hist2Clone, label2, "lf");
-    legend->SetBorderSize(0);
-    legend->SetFillStyle(0);
-    legend->Draw();
+    // TLegend *legend = new TLegend(0.7, 0.75, 0.89, 0.89);
+    // legend->AddEntry(hist1Clone, label1, "lf");
+    // legend->AddEntry(hist2Clone, label2, "lf");
+    // legend->SetBorderSize(0);
+    // legend->SetFillStyle(0);
+    // legend->Draw();
     
-    // Add text showing mean and RMS for both histograms
     TPaveText *statsText = new TPaveText(0.65, 0.55, 0.89, 0.75, "NDC");
     statsText->SetBorderSize(0);
     statsText->SetFillColor(0);
     statsText->SetTextAlign(12);
     statsText->SetTextSize(0.03);
     
-    // Add stats for first histogram
-    TText *title1 = statsText->AddText(Form("%s statistics:", label1));
+    TText *title1 = statsText->AddText(Form("%s:", label1));
     title1->SetTextColor(kBlue);
     title1->SetTextFont(42);
     
@@ -129,8 +119,7 @@ void compareEventCellHistograms(
     TText *rms1Text = statsText->AddText(rms1);
     rms1Text->SetTextColor(kBlue);
     
-    // Add stats for second histogram
-    TText *title2 = statsText->AddText(Form("%s statistics:", label2));
+    TText *title2 = statsText->AddText(Form("%s:", label2));
     title2->SetTextColor(kRed);
     title2->SetTextFont(42);
     
@@ -146,11 +135,9 @@ void compareEventCellHistograms(
     
     statsText->Draw();
     
-    // Update and save the canvas
     canvas->Update();
     canvas->SaveAs(outputFileName);
     
-    // Print some statistics
     std::cout << "Histogram statistics:" << std::endl;
     std::cout << label1 << ": Entries = " << hist1Clone->GetEntries() 
               << ", Mean = " << hist1Clone->GetMean() 
@@ -160,7 +147,6 @@ void compareEventCellHistograms(
               << ", Mean = " << hist2Clone->GetMean() 
               << ", RMS = " << hist2Clone->GetRMS() << std::endl;
     
-    // Clean up
     file1->Close();
     file2->Close();
     delete file1;
