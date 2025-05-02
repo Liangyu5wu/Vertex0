@@ -465,7 +465,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
 
                     if (track_type==1) continue;
                     if (found_non_HS_match) continue;
-                    if (track_type==2 && is_endcap && layer != 1) continue;
+                    if (track_type==2 && is_endcap && layer != 1 && cellE->at(j) < 4 ) continue;
 
                     float mean = 0;
                     float sigma = 0;
@@ -617,7 +617,7 @@ void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endI
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
     std::ostringstream outputFilename;
-    outputFilename << "HSonly_PUcells_removed_plus_unmatchedemb1_reco_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
+    outputFilename << "HSonly_PUcells_removed_plus_unmatchedemb1over4gev_reco_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
 
     if (!outputFile || outputFile->IsZombie()) {
