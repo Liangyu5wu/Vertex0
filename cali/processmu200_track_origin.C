@@ -56,7 +56,7 @@ void initialize_histograms() {
     }
 }
 
-void process_file(const std::string &filename) {
+void process_file(const std::string &filename, float deltaRThreshold) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -231,7 +231,7 @@ void process_file(const std::string &filename) {
                             DeltaR = std::sqrt(dEta * dEta + dPhi * dPhi);
                         }
 
-                        if (DeltaR > 0.05) continue;
+                        if (DeltaR > deltaRThreshold) continue;
 
                         if (trackPt->at(k) > matched_track_pt) {
                             matched_track_DeltaR = DeltaR;
@@ -264,7 +264,7 @@ void process_file(const std::string &filename) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_cali(int startIndex = 1, int endIndex = 46) {
+void processmu200_cali(int startIndex = 1, int endIndex = 46, float deltaRThreshold = 0.05) {
     initialize_histograms();
 
     const std::string path = "./SuperNtuple_mu200";
@@ -275,13 +275,16 @@ void processmu200_cali(int startIndex = 1, int endIndex = 46) {
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str());
+            process_file(filename.str(), deltaRThreshold);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
     }
 
-    TFile *outputFile = new TFile("histograms_track_cali.root", "RECREATE");
+    std::ostringstream outputFilename;
+    outputFilename << "histograms_track_cali_dR" << std::fixed << std::setprecision(3) << deltaRThreshold << ".root";
+    
+    TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
