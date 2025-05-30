@@ -182,7 +182,7 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
     return 1.0;
 }
 
-void process_file(const std::string &filename, float energyThreshold = 1.0) {
+void process_file(const std::string &filename, float energyThreshold = 1.0, float significancecut = 4.0) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -321,7 +321,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
 
             for (size_t j = 0; j < cellE->size(); ++j) {
                 if (cellE->at(j) < energyThreshold) continue;
-                if (cellSignificance->at(j) < 4.0) continue;
+                if (cellSignificance->at(j) < significancecut) continue;
 
                 float cell_time = cellTime->at(j);
                 float cell_x = cellX->at(j);
@@ -528,7 +528,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46) {
+void processmu200_reco(float energyThreshold = 1.0, float significancecut = 4.0, int startIndex = 1, int endIndex = 46) {
     totalTruthVertices = 0;
     unmatchedVertices = 0;
     initialize_histograms();
@@ -541,7 +541,7 @@ void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endI
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), energyThreshold);
+            process_file(filename.str(), energyThreshold, significancecut);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -553,7 +553,7 @@ void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endI
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
     std::ostringstream outputFilename;
-    outputFilename << "HSonly_reconstruction_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << ".root";
+    outputFilename << "HSonly_reconstruction_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << "_signfover" << std::fixed << std::setprecision(2) << significancecut << ".root";
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
 
     if (!outputFile || outputFile->IsZombie()) {
