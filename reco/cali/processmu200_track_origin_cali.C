@@ -56,7 +56,7 @@ void initialize_histograms() {
     }
 }
 
-void process_file(const std::string &filename, float deltaRThreshold) {
+void process_file(const std::string &filename, float deltaRThreshold, float significancecut) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -151,7 +151,7 @@ void process_file(const std::string &filename, float deltaRThreshold) {
 
             for (size_t j = 0; j < cellE->size(); ++j) {
                 if (cellE->at(j) < 1.0) continue;
-                if (cellSignificance->at(j) < 4.0) continue;
+                if (cellSignificance->at(j) < significancecut) continue;
 
                 float cell_time = cellTime->at(j);
                 float cell_x = cellX->at(j);
@@ -264,7 +264,7 @@ void process_file(const std::string &filename, float deltaRThreshold) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_cali(int startIndex = 1, int endIndex = 46, float deltaRThreshold = 0.05) {
+void processmu200_cali(int startIndex = 1, int endIndex = 46, float deltaRThreshold = 0.05 , float significancecut = 4.0) {
     initialize_histograms();
 
     const std::string path = "../SuperNtuple_mu200";
@@ -275,14 +275,14 @@ void processmu200_cali(int startIndex = 1, int endIndex = 46, float deltaRThresh
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), deltaRThreshold);
+            process_file(filename.str(), deltaRThreshold, significancecut);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
     }
 
     std::ostringstream outputFilename;
-    outputFilename << "histograms_track_cali_dR" << std::fixed << std::setprecision(3) << deltaRThreshold << ".root";
+    outputFilename << "histograms_track_cali_dR" << std::fixed << std::setprecision(3) << deltaRThreshold << "_signfcut" << std::fixed << std::setprecision(2) << significancecut << ".root";
     
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
