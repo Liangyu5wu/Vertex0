@@ -17,6 +17,7 @@
 #include "TROOT.h"
 
 // root -l 
+// .L plot_track_iterations.C
 // create_fit_script("histograms_track_cali_dR0.025.root")
 // .q
 // ./run_all_fits.sh
