@@ -9,7 +9,8 @@ SUBMIT_DIR="job_submissions_$(date +%Y%m%d_%H%M%S)"
 mkdir -p $SUBMIT_DIR
 echo "Created submission directory: $SUBMIT_DIR"
 
-DELTA_R_VALUES=("0.025" "0.03" "0.04" "0.05" "0.06" "0.07" "0.10" "0.15" "0.20")
+# DELTA_R_VALUES=("0.025" "0.03" "0.04" "0.05" "0.06" "0.07" "0.10" "0.15" "0.20")
+DELTA_R_VALUES=("0.05")
 
 for DELTA_R in "${DELTA_R_VALUES[@]}"; do
 
