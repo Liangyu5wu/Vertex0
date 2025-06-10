@@ -141,7 +141,7 @@ def process_h5_file(input_file, output_file, max_events=None):
                 ('Cell_phi', np.float64),
                 ('Cell_layer_info', np.int32),
                 ('Cell_significance', np.float64),
-                ('Cell_above_1GeV', np.int32),
+                ('Sig_above_3_celle_above_1GeV', np.int32),
                 ('matched_track_HS', np.int32)
             ])
             
@@ -155,7 +155,7 @@ def process_h5_file(input_file, output_file, max_events=None):
                 event_cells = cells_data[event_idx]
                 event_tracks = tracks_data[event_idx]
                 
-                valid_cells_mask = (event_cells['valid'] == True) & (event_cells['Cell_above_1GeV'] == 1)
+                valid_cells_mask = (event_cells['valid'] == True) & (event_cells['Sig_above_3_celle_above_1GeV'] == 1)
                 valid_cells = event_cells[valid_cells_mask]
                 
                 if len(valid_cells) == 0:
@@ -180,7 +180,7 @@ def process_h5_file(input_file, output_file, max_events=None):
                     processed_cells[event_idx, i]['Cell_eta'] = cell['Cell_eta']
                     processed_cells[event_idx, i]['Cell_phi'] = cell['Cell_phi']
                     processed_cells[event_idx, i]['Cell_significance'] = cell['Cell_significance']
-                    processed_cells[event_idx, i]['Cell_above_1GeV'] = cell['Cell_above_1GeV']
+                    processed_cells[event_idx, i]['Sig_above_3_celle_above_1GeV'] = cell['Sig_above_3_celle_above_1GeV']
                     
                     processed_cells[event_idx, i]['Cell_layer_info'] = convert_layer_info(
                         cell['Cell_layer'], cell['Cell_isEM_Barrel'], cell['Cell_isEM_EndCap']
