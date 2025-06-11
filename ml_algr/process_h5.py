@@ -6,19 +6,10 @@ import argparse
 from pathlib import Path
 from tqdm import tqdm
 
-# python process_h5.py --input-dir ./Vertex_timing --output-dir ./selected_h5n --end-idx 0 --max-events 20
+# python process_h5.py --input-dir ./Vertex_timing --output-dir ./selected_h5 --end-idx 0 --max-events 20
 
 def compute_distance(x1, y1, z1, x2, y2, z2):
     return np.sqrt((x1-x2)**2 + (y1-y2)**2 + (z1-z2)**2)
-
-def convert_layer_info(layer, is_em_barrel, is_em_endcap):
-    if is_em_barrel == 1:
-        if 0 <= layer <= 2:
-            return layer
-    elif is_em_endcap == 1:
-        if 0 <= layer <= 2:
-            return layer + 3
-    return -1
 
 def compute_delta_r(eta1, phi1, eta2, phi2):
     deta = eta1 - eta2
@@ -29,7 +20,7 @@ def compute_delta_r(eta1, phi1, eta2, phi2):
         dphi += 2 * np.pi
     return np.sqrt(deta**2 + dphi**2)
 
-def match_track_to_cell(cell_eta, cell_phi, cell_layer_info, track_data, track_valid_mask):
+def match_track_to_cell(cell_eta, cell_phi, is_barrel, cell_layer, track_data, track_valid_mask):
     matched_track_DeltaR = 999.0
     matched_track_pt = -999.0
     matched_track_HS = False
@@ -42,24 +33,24 @@ def match_track_to_cell(cell_eta, cell_phi, cell_layer_info, track_data, track_v
         track_eta = None
         track_phi = None
         
-        if 0 <= cell_layer_info <= 2:
-            if cell_layer_info == 2:  # EMB3
+        if is_barrel:
+            if cell_layer == 3:  # EMB3
                 track_eta = track_data[k]['Track_EMB3_eta']
                 track_phi = track_data[k]['Track_EMB3_phi']
-            elif cell_layer_info == 1:  # EMB2
+            elif cell_layer == 2:  # EMB2
                 track_eta = track_data[k]['Track_EMB2_eta']
                 track_phi = track_data[k]['Track_EMB2_phi']
-            elif cell_layer_info == 0:  # EMB1
+            elif cell_layer == 1:  # EMB1
                 track_eta = track_data[k]['Track_EMB1_eta']
                 track_phi = track_data[k]['Track_EMB1_phi']
-        elif 3 <= cell_layer_info <= 5:
-            if cell_layer_info == 5:  # EME3
+        else:  # EndCap
+            if cell_layer == 3:  # EME3
                 track_eta = track_data[k]['Track_EME3_eta']
                 track_phi = track_data[k]['Track_EME3_phi']
-            elif cell_layer_info == 4:  # EME2
+            elif cell_layer == 2:  # EME2
                 track_eta = track_data[k]['Track_EME2_eta']
                 track_phi = track_data[k]['Track_EME2_phi']
-            elif cell_layer_info == 3:  # EME1
+            elif cell_layer == 1:  # EME1
                 track_eta = track_data[k]['Track_EME1_eta']
                 track_phi = track_data[k]['Track_EME1_phi']
         
@@ -82,8 +73,9 @@ def match_track_to_cell(cell_eta, cell_phi, cell_layer_info, track_data, track_v
     
     is_matched_hs = 1 if (matched_track_pt > 0 and matched_track_HS) else 0
     matched_pt = matched_track_pt if matched_track_pt > 0 else 0
+    matched_deltaR = matched_track_DeltaR if matched_track_pt > 0 else 999.0
     
-    return is_matched_hs, matched_pt
+    return is_matched_hs, matched_pt, matched_deltaR
 
 def process_h5_file(input_file, output_file, max_events=None):
 
@@ -142,11 +134,13 @@ def process_h5_file(input_file, output_file, max_events=None):
                 ('Cell_z', np.float64),
                 ('Cell_eta', np.float64),
                 ('Cell_phi', np.float64),
-                ('Cell_layer_info', np.int32),
+                ('Cell_Barrel', np.int32),   
+                ('Cell_layer', np.int32),  
                 ('Cell_significance', np.float64),
                 ('Sig_above_3_celle_above_1GeV', np.int32),
                 ('matched_track_HS', np.int32),
-                ('matched_track_pt', np.float64)
+                ('matched_track_pt', np.float64),
+                ('matched_track_deltaR', np.float64)
             ])
             
             processed_cells = np.zeros((len(valid_event_indices), 1000), dtype=cells_dtype)
@@ -186,18 +180,20 @@ def process_h5_file(input_file, output_file, max_events=None):
                     processed_cells[event_idx, i]['Cell_significance'] = cell['Cell_significance']
                     processed_cells[event_idx, i]['Sig_above_3_celle_above_1GeV'] = cell['Sig_above_3_celle_above_1GeV']
                     
-                    processed_cells[event_idx, i]['Cell_layer_info'] = convert_layer_info(
-                        cell['Cell_layer'], cell['Cell_isEM_Barrel'], cell['Cell_isEM_EndCap']
-                    )
+                    is_barrel = (cell['Cell_isEM_Barrel'] == 1)
+                    processed_cells[event_idx, i]['Cell_Barrel'] = 1 if is_barrel else 0
+                    processed_cells[event_idx, i]['Cell_layer'] = cell['Cell_layer'] + 1
                     
-                    matched_hs, matched_pt = match_track_to_cell(
+                    matched_hs, matched_pt, matched_deltaR = match_track_to_cell(
                         cell['Cell_eta'], cell['Cell_phi'], 
-                        processed_cells[event_idx, i]['Cell_layer_info'],
+                        is_barrel,
+                        processed_cells[event_idx, i]['Cell_layer'],
                         event_tracks, valid_tracks_mask
                     )
                     
                     processed_cells[event_idx, i]['matched_track_HS'] = matched_hs
                     processed_cells[event_idx, i]['matched_track_pt'] = matched_pt
+                    processed_cells[event_idx, i]['matched_track_deltaR'] = matched_deltaR
 
                     if matched_hs == 1:
                         matched_hs_count += 1
@@ -231,20 +227,30 @@ def process_h5_file(input_file, output_file, max_events=None):
                 print(f"Avg HS-matched cells per event (of events with HS-matched cells): {avg_matched_hs_cells:.2f}")
 
                 all_matched_pts = []
+                all_matched_deltaRs = []
                 for event_idx in range(len(valid_event_indices)):
                     valid_cell_count = valid_cell_counts[event_idx]
                     if valid_cell_count > 0:
                         for i in range(valid_cell_count):
                             if processed_cells[event_idx, i]['matched_track_HS'] == 1:
                                 all_matched_pts.append(processed_cells[event_idx, i]['matched_track_pt'])
+                                all_matched_deltaRs.append(processed_cells[event_idx, i]['matched_track_deltaR'])
                 
                 if all_matched_pts:
                     all_matched_pts = np.array(all_matched_pts)
+                    all_matched_deltaRs = np.array(all_matched_deltaRs)
+                    
                     print(f"Matched track pt statistics:")
                     print(f"  Min: {np.min(all_matched_pts):.2f} GeV")
                     print(f"  Max: {np.max(all_matched_pts):.2f} GeV")
                     print(f"  Mean: {np.mean(all_matched_pts):.2f} GeV")
                     print(f"  Median: {np.median(all_matched_pts):.2f} GeV")
+                    
+                    print(f"Matched track deltaR statistics:")
+                    print(f"  Min: {np.min(all_matched_deltaRs):.5f}")
+                    print(f"  Max: {np.max(all_matched_deltaRs):.5f}")
+                    print(f"  Mean: {np.mean(all_matched_deltaRs):.5f}")
+                    print(f"  Median : {np.median(all_matched_deltaRs):.5f}")
             else:
                 print("No events with HS-matched cells found.")
             
