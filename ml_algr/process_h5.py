@@ -250,7 +250,7 @@ def process_h5_file(input_file, output_file, max_events=None):
                     print(f"  Min: {np.min(all_matched_deltaRs):.5f}")
                     print(f"  Max: {np.max(all_matched_deltaRs):.5f}")
                     print(f"  Mean: {np.mean(all_matched_deltaRs):.5f}")
-                    print(f"  Median : {np.median(all_matched_deltaRs):.5f}")
+                    print(f"  Median: {np.median(all_matched_deltaRs):.5f}")
             else:
                 print("No events with HS-matched cells found.")
             
