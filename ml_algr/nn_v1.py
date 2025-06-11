@@ -85,7 +85,6 @@ def normalize_features(train_data, val_data, test_data):
     val_vertex, val_geom, val_phys, val_y = val_data
     test_vertex, test_geom, test_phys, test_y = test_data
     
-    # 归一化输入特征
     vertex_mean = np.mean(train_vertex, axis=0)
     vertex_std = np.std(train_vertex, axis=0)
     vertex_std = np.where(vertex_std == 0, 1, vertex_std)
@@ -190,48 +189,44 @@ def build_model(vertex_shape, geom_shape, phys_shape):
     geometry_input = layers.Input(shape=geom_shape, name="geometry_input")
     physics_input = layers.Input(shape=phys_shape, name="physics_input")
     
-    # Process vertex features
-    x_vertex = layers.Dense(16, activation='relu')(vertex_input)
-    x_vertex = layers.BatchNormalization()(x_vertex)
-    x_vertex = layers.Dense(8, activation='relu')(x_vertex)
-        
-    # Process geometry features
-    x_geom = layers.TimeDistributed(layers.Dense(32, activation='relu'))(geometry_input)
-    x_geom = layers.BatchNormalization()(x_geom)
-    x_geom = layers.TimeDistributed(layers.Dense(16, activation='relu'))(x_geom)
-    x_geom = layers.GlobalAveragePooling1D()(x_geom)
-        
-    # Process physics features (potentially more important)
-    x_phys = layers.TimeDistributed(layers.Dense(64, activation='relu'))(physics_input)
-    x_phys = layers.BatchNormalization()(x_phys)
-    x_phys = layers.TimeDistributed(layers.Dense(32, activation='relu'))(x_phys)
-    x_phys = layers.GlobalAveragePooling1D()(x_phys)
-        
-    # Concatenate all features
-    combined = layers.Concatenate()([x_vertex, x_geom, x_phys])
-        
-    # Fully connected layers
-    x = layers.Dense(128, activation='relu')(combined)
+
+    cell_features = layers.Concatenate(axis=-1)([geometry_input, physics_input])
+    
+    cell_processed = layers.TimeDistributed(layers.Dense(64, activation='relu'))(cell_features)
+    cell_processed = layers.BatchNormalization()(cell_processed)
+    cell_processed = layers.TimeDistributed(layers.Dense(32, activation='relu'))(cell_processed)
+    cell_processed = layers.BatchNormalization()(cell_processed)
+    
+    cell_aggregated = layers.GlobalAveragePooling1D()(cell_processed)
+
+    combined = layers.Concatenate()([vertex_input, cell_aggregated])
+    
+
+    x = layers.Dense(256, activation='relu')(combined)
     x = layers.BatchNormalization()(x)
+    
+    x = layers.Dense(128, activation='relu')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dropout(0.3)(x)
+    
     x = layers.Dense(64, activation='relu')(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dropout(0.2)(x)
-    x = layers.Dense(32, activation='relu')(x) 
-    x = layers.BatchNormalization()(x)
-    x = layers.Dropout(0.2)(x)
-    x = layers.Dense(16, activation='relu')(x)
     
-    # Output layer
+    x = layers.Dense(32, activation='relu')(x)
+    x = layers.BatchNormalization()(x)
+    
     output = layers.Dense(1)(x)
     
-    # Create model
     model = models.Model(
         inputs=[vertex_input, geometry_input, physics_input], 
         outputs=output
     )
     
+    optimizer = tf.keras.optimizers.Adam(learning_rate=5e-4)
+    
     model.compile(
-        optimizer='adam',
+        optimizer=optimizer,
         loss='mse',
         metrics=['mae']
     )
@@ -267,14 +262,14 @@ callbacks_list = [
     ),
     callbacks.ReduceLROnPlateau(
         monitor='val_loss',
-        factor=0.5,
+        factor=0.4,
         patience=10,
         min_lr=1e-8
     )
 ]
 
-batch_size = 256
-epochs = 100
+batch_size = 64
+epochs = 200
 
 # Train the model
 history = model.fit(
