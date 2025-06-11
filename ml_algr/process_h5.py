@@ -33,7 +33,7 @@ def match_track_to_cell(cell_eta, cell_phi, cell_layer_info, track_data, track_v
     matched_track_DeltaR = 999.0
     matched_track_pt = -999.0
     matched_track_HS = False
-    # deltaRThreshold = 0.1 
+    deltaRThreshold = 0.05
 
     valid_track_indices = np.where(track_valid_mask)[0]
     
@@ -72,15 +72,18 @@ def match_track_to_cell(cell_eta, cell_phi, cell_layer_info, track_data, track_v
                 dPhi += 2 * math.pi
             DeltaR = math.sqrt(dEta * dEta + dPhi * dPhi)
         
-        # if DeltaR > deltaRThreshold:
-        #     continue
+        if DeltaR > deltaRThreshold:
+            continue
             
         if track_data[k]['Track_pt'] > matched_track_pt:
             matched_track_DeltaR = DeltaR
             matched_track_pt = track_data[k]['Track_pt']
             matched_track_HS = (track_data[k]['Track_isGoodFromHS'] == 1)
     
-    return 1 if (matched_track_pt > 0 and matched_track_HS) else 0
+    is_matched_hs = 1 if (matched_track_pt > 0 and matched_track_HS) else 0
+    matched_pt = matched_track_pt if matched_track_pt > 0 else 0
+    
+    return is_matched_hs, matched_pt
 
 def process_h5_file(input_file, output_file, max_events=None):
 
@@ -142,7 +145,8 @@ def process_h5_file(input_file, output_file, max_events=None):
                 ('Cell_layer_info', np.int32),
                 ('Cell_significance', np.float64),
                 ('Sig_above_3_celle_above_1GeV', np.int32),
-                ('matched_track_HS', np.int32)
+                ('matched_track_HS', np.int32),
+                ('matched_track_pt', np.float64)
             ])
             
             processed_cells = np.zeros((len(valid_event_indices), 1000), dtype=cells_dtype)
@@ -186,12 +190,14 @@ def process_h5_file(input_file, output_file, max_events=None):
                         cell['Cell_layer'], cell['Cell_isEM_Barrel'], cell['Cell_isEM_EndCap']
                     )
                     
-                    matched_hs = match_track_to_cell(
+                    matched_hs, matched_pt = match_track_to_cell(
                         cell['Cell_eta'], cell['Cell_phi'], 
                         processed_cells[event_idx, i]['Cell_layer_info'],
                         event_tracks, valid_tracks_mask
                     )
+                    
                     processed_cells[event_idx, i]['matched_track_HS'] = matched_hs
+                    processed_cells[event_idx, i]['matched_track_pt'] = matched_pt
 
                     if matched_hs == 1:
                         matched_hs_count += 1
@@ -223,6 +229,22 @@ def process_h5_file(input_file, output_file, max_events=None):
                 print(f"Max HS-matched cells per event: {max_matched_hs_cells}")
                 print(f"Min HS-matched cells per event (of events with HS-matched cells): {min_matched_hs_cells}")
                 print(f"Avg HS-matched cells per event (of events with HS-matched cells): {avg_matched_hs_cells:.2f}")
+
+                all_matched_pts = []
+                for event_idx in range(len(valid_event_indices)):
+                    valid_cell_count = valid_cell_counts[event_idx]
+                    if valid_cell_count > 0:
+                        for i in range(valid_cell_count):
+                            if processed_cells[event_idx, i]['matched_track_HS'] == 1:
+                                all_matched_pts.append(processed_cells[event_idx, i]['matched_track_pt'])
+                
+                if all_matched_pts:
+                    all_matched_pts = np.array(all_matched_pts)
+                    print(f"Matched track pt statistics:")
+                    print(f"  Min: {np.min(all_matched_pts):.2f} GeV")
+                    print(f"  Max: {np.max(all_matched_pts):.2f} GeV")
+                    print(f"  Mean: {np.mean(all_matched_pts):.2f} GeV")
+                    print(f"  Median: {np.median(all_matched_pts):.2f} GeV")
             else:
                 print("No events with HS-matched cells found.")
             
