@@ -27,8 +27,8 @@ std::map<int, std::vector<float>> jets_phi_map;
 std::map<int, bool> found_events;
 
 void initialize_histograms() {
-    const int bins_eta = 50;
-    const int bins_phi = 50;
+    const int bins_eta = 100;
+    const int bins_phi = 100;
     const double eta_min = -5.0;
     const double eta_max = 5.0;
     const double phi_min = -4.0;
