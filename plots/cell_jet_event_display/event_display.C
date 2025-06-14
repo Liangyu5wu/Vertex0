@@ -10,9 +10,9 @@
 #include <TTree.h>
 #include <TH2F.h>
 
--- root -l
--- .L event_display.C
--- event_display_analysis(2.0, 1, 1)
+// root -l
+// .L event_display.C
+// event_display_analysis(2.0, 1, 1)
 
 const double c_light = 0.299792458; // mm/ps
 
