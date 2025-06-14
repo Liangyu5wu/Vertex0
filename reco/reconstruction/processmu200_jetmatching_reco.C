@@ -325,6 +325,33 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
                 if (cellE->at(j) < energyThreshold) continue;
                 if (cellSignificance->at(j) < 4.0) continue;
 
+                float cell_eta = cellEta->at(j);
+                float cell_phi = cellPhi->at(j);
+                
+                bool isCloseToJet = false;
+                for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
+                    float jetEta = selectedJetEta[jetIdx];
+                    float jetPhi = selectedJetPhi[jetIdx];
+                    
+                    float dEta = jetEta - cell_eta;
+                    float dPhi = jetPhi - cell_phi;
+                    
+                    if (dPhi >= M_PI) {
+                        dPhi -= 2 * M_PI;
+                    } else if (dPhi < -M_PI) {
+                        dPhi += 2 * M_PI;
+                    }
+                    
+                    float DeltaR = std::sqrt(dEta * dEta + dPhi * dPhi);
+                    
+                    if (DeltaR < 0.3) {
+                        isCloseToJet = true;
+                        break;
+                    }
+                }
+
+                if (!isCloseToJet) continue;
+
                 float cell_time = cellTime->at(j);
                 float cell_x = cellX->at(j);
                 float cell_y = cellY->at(j);
