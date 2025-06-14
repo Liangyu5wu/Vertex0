@@ -265,52 +265,57 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
         std::vector<float> selectedJetEta;
         std::vector<float> selectedJetPhi;
 
+        if (entry < 10) {
+            int totalJets = TopoJetsPt->size();
+            int highPtJets = 0;
+            int jetsWithTruthMatch = 0;
+            int highPtJetsWithoutMatch = 0;
+            
+            std::cout << "\n------ Event " << entry << " ------\n";
+            std::cout << "Total jets: " << totalJets << std::endl;
+            
+            std::cout << "Jet pt values: ";
+            for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
+                std::cout << TopoJetsPt->at(j) << " ";
+            }
+            std::cout << std::endl;
 
-
-        int totalJets = TopoJetsPt->size();
-        int highPtJets = 0;
-        int jetsWithTruthMatch = 0;
-        
-        for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
-            if (TopoJetsPt->at(j) > 30) {
-                highPtJets++;
+            std::vector<float> matchedJetsPt;
+            std::vector<float> unmatchedHighPtJetsPt;
+            
+            for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
+                bool isHighPt = (TopoJetsPt->at(j) > 30);
+                bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
                 
-                if (j < TopoJets_TruthHSJetIdx->size()) {
-                    int matchCount = TopoJets_TruthHSJetIdx->at(j).size();
-                    
-                    if (!TopoJets_TruthHSJetIdx->at(j).empty()) {
-                        jetsWithTruthMatch++;
-                        selectedJetPt.push_back(TopoJetsPt->at(j));
-                        selectedJetEta.push_back(TopoJetsEta->at(j));
-                        selectedJetPhi.push_back(TopoJetsPhi->at(j));
-                        
-                        std::cout << "Event " << entry << ", Jet " << j 
-                                  << ": pt=" << TopoJetsPt->at(j)
-                                  << ", matches=" << matchCount 
-                                  << ", first match idx=" << TopoJets_TruthHSJetIdx->at(j)[0] 
-                                  << std::endl;
-                    }
+                if (isHighPt) highPtJets++;
+                
+                if (hasMatch) {
+                    jetsWithTruthMatch++;
+                    matchedJetsPt.push_back(TopoJetsPt->at(j));
+                }
+                
+                if (isHighPt && !hasMatch) {
+                    highPtJetsWithoutMatch++;
+                    unmatchedHighPtJetsPt.push_back(TopoJetsPt->at(j));
                 }
             }
+            
+            std::cout << "Jets with pt > 30 GeV: " << highPtJets << std::endl;
+            
+            std::cout << "Jets with truth matches: " << jetsWithTruthMatch << " [";
+            for (size_t i = 0; i < matchedJetsPt.size(); ++i) {
+                std::cout << matchedJetsPt[i];
+                if (i < matchedJetsPt.size() - 1) std::cout << ", ";
+            }
+            std::cout << "]" << std::endl;
+
+            std::cout << "Jets with pt > 30 GeV but no truth match: " << highPtJetsWithoutMatch << " [";
+            for (size_t i = 0; i < unmatchedHighPtJetsPt.size(); ++i) {
+                std::cout << unmatchedHighPtJetsPt[i];
+                if (i < unmatchedHighPtJetsPt.size() - 1) std::cout << ", ";
+            }
+            std::cout << "]" << std::endl;
         }
-        
-        if (entry % 100 == 0 || entry == nEntries - 1) {
-            std::cout << "Event " << entry << " summary: " 
-                      << totalJets << " total jets, "
-                      << highPtJets << " jets with pt>30 GeV, "
-                      << jetsWithTruthMatch << " jets with truth matches" 
-                      << std::endl;
-        }
-        
-        //for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
-        //    if (TopoJetsPt->at(j) > 30 && 
-        //        j < TopoJets_TruthHSJetIdx->size() && 
-        //        !TopoJets_TruthHSJetIdx->at(j).empty()) {
-        //        selectedJetPt.push_back(TopoJetsPt->at(j));
-        //        selectedJetEta.push_back(TopoJetsEta->at(j));
-        //        selectedJetPhi.push_back(TopoJetsPhi->at(j));
-        //    }
-        //}
 
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
             if (!truthVtxIsHS->at(i)) continue;
@@ -507,6 +512,9 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
 }
 
 void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46) {
+
+    gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
+    gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
     totalTruthVertices = 0;
     unmatchedVertices = 0;
     initialize_histograms();
