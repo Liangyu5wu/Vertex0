@@ -74,9 +74,10 @@ void process_file(const std::string &filename) {
     std::vector<float> *truthVtxY = nullptr;
     std::vector<float> *truthVtxZ = nullptr;
     std::vector<bool> *truthVtxIsHS = nullptr;
-    std::vector<float> *RecoVtxX = nullptr;
-    std::vector<float> *RecoVtxY = nullptr;
-    std::vector<float> *RecoVtxZ = nullptr;
+    std::vector<float> *recoVtxX = nullptr;
+    std::vector<float> *recoVtxY = nullptr;
+    std::vector<float> *recoVtxZ = nullptr;
+    std::vector<bool> *recoVtxIsHS = nullptr;
     std::vector<float> *cellTime = nullptr;
     std::vector<float> *cellE = nullptr;
     std::vector<float> *cellX = nullptr;
@@ -92,9 +93,10 @@ void process_file(const std::string &filename) {
     tree->SetBranchAddress("TruthVtx_y", &truthVtxY);
     tree->SetBranchAddress("TruthVtx_z", &truthVtxZ);
     tree->SetBranchAddress("TruthVtx_isHS", &truthVtxIsHS);
-    tree->SetBranchAddress("RecoVtx_x", &RecoVtxX);
-    tree->SetBranchAddress("RecoVtx_y", &RecoVtxY);
-    tree->SetBranchAddress("RecoVtx_z", &RecoVtxZ);
+    tree->SetBranchAddress("RecoVtx_x", &recoVtxX);
+    tree->SetBranchAddress("RecoVtx_y", &recoVtxY);
+    tree->SetBranchAddress("RecoVtx_z", &recoVtxZ);
+    tree->SetBranchAddress("RecoVtx_isHS", &recoVtxIsHS);
     tree->SetBranchAddress("Cell_time", &cellTime);
     tree->SetBranchAddress("Cell_e", &cellE);
     tree->SetBranchAddress("Cell_x", &cellX);
@@ -116,9 +118,22 @@ void process_file(const std::string &filename) {
             float vtx_x = truthVtxX->at(i);
             float vtx_y = truthVtxY->at(i);
             float vtx_z = truthVtxZ->at(i);
-            float reco_vtx_x = RecoVtxX->at(i);
-            float reco_vtx_y = RecoVtxY->at(i);
-            float reco_vtx_z = RecoVtxZ->at(i);
+
+            bool foundRecoVtx = false;
+            float reco_vtx_x = 0.0;
+            float reco_vtx_y = 0.0;
+            float reco_vtx_z = 0.0;
+
+            for (size_t reco_i = 0; reco_i < recoVtxIsHS->size(); ++reco_i) {
+                if (!recoVtxIsHS->at(reco_i)) continue;
+                reco_vtx_x = recoVtxX->at(reco_i);
+                reco_vtx_y = recoVtxY->at(reco_i);
+                reco_vtx_z = recoVtxZ->at(reco_i);
+                foundRecoVtx = true;
+                break;
+            }
+            
+            if (!foundRecoVtx) continue;
 
             float reco_dz_distance = std::sqrt((vtx_x - reco_vtx_x)*(vtx_x - reco_vtx_x)
                                              + (vtx_y - reco_vtx_y)*(vtx_y - reco_vtx_y)
