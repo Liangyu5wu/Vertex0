@@ -5,12 +5,13 @@
 #include <iomanip>
 #include <sstream>
 #include <cmath>
+#include <algorithm>
+#include <tuple>
 #include <TFile.h>
 #include <TTree.h>
 #include <TH1F.h>
 
 const double c_light = 0.299792458; // mm/ps
-
 
 const float emb1_y[7] = {44.0004, 36.1672, 27.7946, 22.8566, 18.6052, 13.5979, 8.63018};
 const float emb1_ysigma[7] = {428.908, 299.433, 210.949, 149.052, 117.804, 107.251, 57.5941};
@@ -57,6 +58,8 @@ TH1F *eventCellHist;
 TH1F *emeCellHist;
 TH1F *embCellHist;
 
+TH1F *selectedJetWidthHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
@@ -77,7 +80,6 @@ void initialize_histograms() {
     eventDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
     eventDeltaTimeHist->GetYaxis()->SetTitle("Events");
 
-    
     emb1TimeHist = new TH1F("emb1Time", "Reconstructed Event Time (EMB1 Only)", bins, min_range, max_range);
     emb1TimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     emb1TimeHist->GetYaxis()->SetTitle("Events");
@@ -126,7 +128,6 @@ void initialize_histograms() {
     eme3DeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
     eme3DeltaTimeHist->GetYaxis()->SetTitle("Events");
 
-
     embDeltaTimeHist = new TH1F("embDeltaTime", "Delta t0 (EMB Only)", bins, min_range, max_range);
     embDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
     embDeltaTimeHist->GetYaxis()->SetTitle("Events");
@@ -143,8 +144,6 @@ void initialize_histograms() {
     emeTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     emeTimeHist->GetYaxis()->SetTitle("Events");
 
-
-
     eventCellHist = new TH1F("eventCell", "Cells Used", 500, 0, 500);
     eventCellHist->GetXaxis()->SetTitle("Cells Used");
     eventCellHist->GetYaxis()->SetTitle("Events");
@@ -157,7 +156,9 @@ void initialize_histograms() {
     embCellHist->GetXaxis()->SetTitle("Cells Used");
     embCellHist->GetYaxis()->SetTitle("Events");
 
-
+    selectedJetWidthHist = new TH1F("selectedJetWidth", "Selected Jet Width Distribution", 50, 0, 0.4);
+    selectedJetWidthHist->GetXaxis()->SetTitle("Jet Width");
+    selectedJetWidthHist->GetYaxis()->SetTitle("Jets");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -186,7 +187,8 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
     return 1.0;
 }
 
-void process_file(const std::string &filename, float energyThreshold = 1.0, float jetPtThreshold = 30.0, float deltaRThreshold = 0.3, int maxJets = -1) {
+void process_file(const std::string &filename, float energyThreshold = 1.0, float jetPtThreshold = 30.0, 
+                  float deltaRThreshold = 0.3, int maxJets = -1, float jetWidthMin = 0.0, float jetWidthMax = 1.0) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -224,11 +226,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
     std::vector<float> *TopoJetsPt = nullptr;
     std::vector<float> *TopoJetsEta = nullptr;
     std::vector<float> *TopoJetsPhi = nullptr;
-    std::vector<std::vector<int>> *TopoJets_TruthHSJetIdx = nullptr;
-
-
-
-    tree->SetBranchAddress("TruthVtx_time", &truthVtxTime);
+    std::vector<float> *TopoJetsWidth = nullptr;
+    std::vector<std::vector<int>> *TopoJets_TruthHSJetIdx = nullptr; tree->SetBranchAddress("TruthVtx_time", &truthVtxTime);
     tree->SetBranchAddress("TruthVtx_x", &truthVtxX);
     tree->SetBranchAddress("TruthVtx_y", &truthVtxY);
     tree->SetBranchAddress("TruthVtx_z", &truthVtxZ);
@@ -251,6 +250,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
     tree->SetBranchAddress("AntiKt4EMTopoJets_pt", &TopoJetsPt);
     tree->SetBranchAddress("AntiKt4EMTopoJets_eta", &TopoJetsEta);
     tree->SetBranchAddress("AntiKt4EMTopoJets_phi", &TopoJetsPhi);
+    tree->SetBranchAddress("AntiKt4EMTopoJets_width", &TopoJetsWidth);
     tree->SetBranchAddress("AntiKt4EMTopoJets_truthHSJet_idx", &TopoJets_TruthHSJetIdx);
 
     Long64_t nEntries = tree->GetEntries();
@@ -264,21 +264,24 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
         std::vector<float> selectedJetPt;
         std::vector<float> selectedJetEta;
         std::vector<float> selectedJetPhi;
+        std::vector<float> selectedJetWidth;
 
-        std::vector<std::tuple<float, float, float>> candidateJets;
+        std::vector<std::tuple<float, float, float, float>> candidateJets;
 
         for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
             bool isHighPt = (TopoJetsPt->at(j) > jetPtThreshold);
             bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
+            bool isWidthInRange = (TopoJetsWidth->at(j) >= jetWidthMin && TopoJetsWidth->at(j) <= jetWidthMax);
             
-            if (isHighPt && hasMatch) {
-                candidateJets.push_back(std::make_tuple(TopoJetsPt->at(j), TopoJetsEta->at(j), TopoJetsPhi->at(j)));
+            if (isHighPt && hasMatch && isWidthInRange) {
+                candidateJets.push_back(std::make_tuple(TopoJetsPt->at(j), TopoJetsEta->at(j), 
+                                                       TopoJetsPhi->at(j), TopoJetsWidth->at(j)));
             }
         }
 
         if (maxJets > 0 && candidateJets.size() > maxJets) {
             std::sort(candidateJets.begin(), candidateJets.end(), 
-                     [](const std::tuple<float, float, float>& a, const std::tuple<float, float, float>& b) {
+                     [](const std::tuple<float, float, float, float>& a, const std::tuple<float, float, float, float>& b) {
                          return std::get<0>(a) > std::get<0>(b);
                      });
             candidateJets.resize(maxJets);
@@ -288,6 +291,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             selectedJetPt.push_back(std::get<0>(jet));
             selectedJetEta.push_back(std::get<1>(jet));
             selectedJetPhi.push_back(std::get<2>(jet));
+            selectedJetWidth.push_back(std::get<3>(jet));
         }
 
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
@@ -324,6 +328,11 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                                              + (vtx_z - reco_vtx_z)*(vtx_z - reco_vtx_z));
             if (reco_dz_distance > 2) continue;
 
+            // Fill jet width histogram for events that pass all cuts
+            for (size_t k = 0; k < selectedJetWidth.size(); ++k) {
+                selectedJetWidthHist->Fill(selectedJetWidth[k]);
+            }
+
             double weighted_sum = 0.0, weight_sum = 0.0;
             double weighted_sum_emb = 0.0, weight_sum_emb = 0.0;
             double weighted_sum_eme = 0.0, weight_sum_eme = 0.0;
@@ -333,7 +342,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             double weighted_sum_eme1 = 0.0, weight_sum_eme1 = 0.0;
             double weighted_sum_eme2 = 0.0, weight_sum_eme2 = 0.0;
             double weighted_sum_eme3 = 0.0, weight_sum_eme3 = 0.0;
-
 
             for (size_t j = 0; j < cellE->size(); ++j) {
                 if (cellE->at(j) < energyThreshold) continue;
@@ -379,7 +387,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
                 bool is_barrel = cellIsEMBarrel->at(j);
                 bool is_endcap = cellIsEMEndCap->at(j);
-
 
                 int layer = cellLayer->at(j);
                 float energy = cellE->at(j);
@@ -440,7 +447,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             embCellHist->Fill(emb_cell_used_counter);
             emeCellHist->Fill(eme_cell_used_counter);
 
-
             if (weight_sum > 0) {
                 float event_time = weighted_sum / weight_sum;
                 float delta_event_time = event_time - vtx_time;
@@ -479,7 +485,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             if (weight_sum_emb3 > 0) {
                 float event_time_emb3 = weighted_sum_emb3 / weight_sum_emb3;
                 float delta_event_time_emb3 = event_time_emb3 - vtx_time;
-                emb3DeltaTimeHist->Fill(delta_event_time_emb3);
+                emb3DeltaTimeHist->Fill(delta_event_time_emb3 );
                 emb3TimeHist->Fill(event_time_emb3);
             }
             
@@ -503,6 +509,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 eme3DeltaTimeHist->Fill(delta_event_time_eme3);
                 eme3TimeHist->Fill(event_time_eme3);
             }
+            
+            break; // Only process the first valid truth vertex per event
         }
     }
 
@@ -512,7 +520,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 }
 
 void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46, 
-                                  float jetPtThreshold = 30.0, float deltaRThreshold = 0.3, int maxJets = -1) {
+                                  float jetPtThreshold = 30.0, float deltaRThreshold = 0.3, int maxJets = -1,
+                                  float jetWidthMin = 0.17, float jetWidthMax = 0.4) {
 
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
     gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
@@ -528,7 +537,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), energyThreshold, jetPtThreshold, deltaRThreshold, maxJets);
+            process_file(filename.str(), energyThreshold, jetPtThreshold, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -546,6 +555,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     if (maxJets > 0) {
         outputFilename << "_maxJets" << maxJets;
     }
+    outputFilename << "_jetWidth" << std::setprecision(2) << jetWidthMin << "to" << jetWidthMax;
     outputFilename << ".root";
 
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
@@ -579,6 +589,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     embCellHist->Write();
     emeCellHist->Write();
 
+    selectedJetWidthHist->Write();
 
     outputFile->Close();
 
@@ -608,6 +619,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete embCellHist;
     delete emeCellHist;
 
+    delete selectedJetWidthHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
@@ -616,5 +628,5 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     std::cout << "  Jet pT threshold: " << jetPtThreshold << std::endl;
     std::cout << "  Delta R threshold: " << deltaRThreshold << std::endl;
     std::cout << "  Max jets per event: " << (maxJets > 0 ? std::to_string(maxJets) : "all") << std::endl;
-    
+    std::cout << "  Jet width range: " << jetWidthMin << " to " << jetWidthMax << std::endl;
 }
