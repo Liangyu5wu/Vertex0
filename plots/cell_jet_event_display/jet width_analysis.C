@@ -17,7 +17,7 @@ int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
 void initialize_histograms() {
-    jetWidthHist = new TH1F("jetWidth", "Selected Jets Width Distribution", 100, 0, 1.0);
+    jetWidthHist = new TH1F("jetWidth", "Selected Jets Width Distribution", 100, 0, 0.4);
     jetWidthHist->GetXaxis()->SetTitle("Jet Width");
     jetWidthHist->GetYaxis()->SetTitle("Jets");
 }
