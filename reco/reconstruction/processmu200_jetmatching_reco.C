@@ -156,7 +156,7 @@ void initialize_histograms() {
     embCellHist->GetXaxis()->SetTitle("Cells Used");
     embCellHist->GetYaxis()->SetTitle("Events");
 
-    selectedJetWidthHist = new TH1F("selectedJetWidth", "Selected Jet Width Distribution", 50, 0, 0.4);
+    selectedJetWidthHist = new TH1F("selectedJetWidth", "Selected Jet Width Distribution", 100, 0, 0.4);
     selectedJetWidthHist->GetXaxis()->SetTitle("Jet Width");
     selectedJetWidthHist->GetYaxis()->SetTitle("Jets");
 }
