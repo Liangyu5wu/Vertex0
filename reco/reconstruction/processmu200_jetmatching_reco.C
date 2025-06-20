@@ -187,7 +187,7 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
     return 1.0;
 }
 
-void process_file(const std::string &filename, float energyThreshold = 1.0, float jetPtThreshold = 30.0, 
+void process_file(const std::string &filename, float energyThreshold = 1.0, float jetPtMin = 30.0, float jetPtMax = 1000.0,
                   float deltaRThreshold = 0.3, int maxJets = -1, float jetWidthMin = 0.0, float jetWidthMax = 1.0) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
@@ -227,7 +227,9 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
     std::vector<float> *TopoJetsEta = nullptr;
     std::vector<float> *TopoJetsPhi = nullptr;
     std::vector<float> *TopoJetsWidth = nullptr;
-    std::vector<std::vector<int>> *TopoJets_TruthHSJetIdx = nullptr; tree->SetBranchAddress("TruthVtx_time", &truthVtxTime);
+    std::vector<std::vector<int>> *TopoJets_TruthHSJetIdx = nullptr;
+
+    tree->SetBranchAddress("TruthVtx_time", &truthVtxTime);
     tree->SetBranchAddress("TruthVtx_x", &truthVtxX);
     tree->SetBranchAddress("TruthVtx_y", &truthVtxY);
     tree->SetBranchAddress("TruthVtx_z", &truthVtxZ);
@@ -269,11 +271,11 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
         std::vector<std::tuple<float, float, float, float>> candidateJets;
 
         for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
-            bool isHighPt = (TopoJetsPt->at(j) > jetPtThreshold);
+            bool isInPtRange = (TopoJetsPt->at(j) >= jetPtMin && TopoJetsPt->at(j) <= jetPtMax);
             bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
             bool isWidthInRange = (TopoJetsWidth->at(j) >= jetWidthMin && TopoJetsWidth->at(j) <= jetWidthMax);
             
-            if (isHighPt && hasMatch && isWidthInRange) {
+            if (isInPtRange && hasMatch && isWidthInRange) {
                 candidateJets.push_back(std::make_tuple(TopoJetsPt->at(j), TopoJetsEta->at(j), 
                                                        TopoJetsPhi->at(j), TopoJetsWidth->at(j)));
             }
@@ -484,8 +486,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             
             if (weight_sum_emb3 > 0) {
                 float event_time_emb3 = weighted_sum_emb3 / weight_sum_emb3;
-                float delta_event_time_emb3 = event_time_emb3 - vtx_time;
-                emb3DeltaTimeHist->Fill(delta_event_time_emb3 );
+                float delta_event_time_emb3 = event_time_emb3 - vtx_time; emb3DeltaTimeHist->Fill(delta_event_time_emb3);
                 emb3TimeHist->Fill(event_time_emb3);
             }
             
@@ -520,7 +521,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 }
 
 void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46, 
-                                  float jetPtThreshold = 30.0, float deltaRThreshold = 0.3, int maxJets = -1,
+                                  float jetPtMin = 30.0, float jetPtMax = 1000.0, float deltaRThreshold = 0.3, int maxJets = -1,
                                   float jetWidthMin = 0.17, float jetWidthMax = 0.4) {
 
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
@@ -537,7 +538,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), energyThreshold, jetPtThreshold, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax);
+            process_file(filename.str(), energyThreshold, jetPtMin, jetPtMax, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -550,8 +551,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
 
     std::ostringstream outputFilename;
     outputFilename << "jetmatching_reconstruction_Eover" << std::fixed << std::setprecision(1) 
-                  << energyThreshold << "_jetPt" << jetPtThreshold
-                  << "_dR" << deltaRThreshold;
+                  << energyThreshold << "_jetPt" << std::setprecision(0) << jetPtMin << "to" << jetPtMax
+                  << "_dR" << std::setprecision(1) << deltaRThreshold;
     if (maxJets > 0) {
         outputFilename << "_maxJets" << maxJets;
     }
@@ -625,7 +626,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
 
     std::cout << "Parameters used: " << std::endl;
     std::cout << "  Energy threshold: " << energyThreshold << std::endl;
-    std::cout << "  Jet pT threshold: " << jetPtThreshold << std::endl;
+    std::cout << "  Jet pT range: " << jetPtMin << " - " << jetPtMax << " GeV" << std::endl;
     std::cout << "  Delta R threshold: " << deltaRThreshold << std::endl;
     std::cout << "  Max jets per event: " << (maxJets > 0 ? std::to_string(maxJets) : "all") << std::endl;
     std::cout << "  Jet width range: " << jetWidthMin << " to " << jetWidthMax << std::endl;
