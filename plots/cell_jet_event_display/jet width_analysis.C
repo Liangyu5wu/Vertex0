@@ -22,7 +22,7 @@ void initialize_histograms() {
     jetWidthHist->GetYaxis()->SetTitle("Jets");
 }
 
-void process_file(const std::string &filename, float jetPtThreshold = 30.0, int maxJets = -1) {
+void process_file(const std::string &filename, float jetPtMin = 30.0, float jetPtMax = 1000.0, int maxJets = -1) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -79,10 +79,10 @@ void process_file(const std::string &filename, float jetPtThreshold = 30.0, int 
         std::vector<std::tuple<float, float, float, float>> candidateJets;
 
         for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
-            bool isHighPt = (TopoJetsPt->at(j) > jetPtThreshold);
+            bool isInPtRange = (TopoJetsPt->at(j) >= jetPtMin && TopoJetsPt->at(j) <= jetPtMax);
             bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
             
-            if (isHighPt && hasMatch) {
+            if (isInPtRange && hasMatch) {
                 candidateJets.push_back(std::make_tuple(TopoJetsPt->at(j), TopoJetsEta->at(j), 
                                                        TopoJetsPhi->at(j), TopoJetsWidth->at(j)));
             }
@@ -150,7 +150,7 @@ void process_file(const std::string &filename, float jetPtThreshold = 30.0, int 
 }
 
 void processmu200_jetwidth_analysis(int startIndex = 1, int endIndex = 46, 
-                                   float jetPtThreshold = 30.0, int maxJets = -1) {
+                                   float jetPtMin = 30.0, float jetPtMax = 1000.0, int maxJets = -1) {
 
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
     gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
@@ -166,7 +166,7 @@ void processmu200_jetwidth_analysis(int startIndex = 1, int endIndex = 46,
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), jetPtThreshold, maxJets);
+            process_file(filename.str(), jetPtMin, jetPtMax, maxJets);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -178,7 +178,8 @@ void processmu200_jetwidth_analysis(int startIndex = 1, int endIndex = 46,
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
     std::ostringstream outputFilename;
-    outputFilename << "jetwidth_analysis_jetPt" << jetPtThreshold;
+    outputFilename << "jetwidth_analysis_jetPt" << std::fixed << std::setprecision(0) 
+                  << jetPtMin << "to" << jetPtMax;
     if (maxJets > 0) {
         outputFilename << "_maxJets" << maxJets;
     }
@@ -200,7 +201,7 @@ void processmu200_jetwidth_analysis(int startIndex = 1, int endIndex = 46,
     std::cout << "Jet width analysis completed. Results saved to " << outputFilename.str() << std::endl;
 
     std::cout << "Parameters used: " << std::endl;
-    std::cout << "  Jet pT threshold: " << jetPtThreshold << std::endl;
+    std::cout << "  Jet pT range: " << jetPtMin << " - " << jetPtMax << " GeV" << std::endl;
     std::cout << "  Max jets per event: " << (maxJets > 0 ? std::to_string(maxJets) : "all") << std::endl;
     
 }
