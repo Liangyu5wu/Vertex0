@@ -14,9 +14,9 @@ echo "Created output directory: $OUTPUT_FOLDER"
 # Define analysis tasks
 # Format: "mode,inputFile,outputBase,fitMin,fitMax,description"
 # ANALYSIS_TASKS=(
-#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.01.root,jetwidth001,-120,120,jetPt30"
-#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.03.root,jetwidth003,-120,120,jetPt40"
-#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.05.root,jetwidth005,-120,120,jetPt50"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.01.root,jetwidth001,-120,120,jetwidth0.01"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.03.root,jetwidth003,-120,120,jetwidth0.03"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.05.root,jetwidth005,-120,120,jetwidth0.05"
 #     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.06.root,jetwidth006,-120,120,jetPt60"
 #     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.08.root,jetwidth008,-120,120,jetPt70"
 #     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.09.root,jetwidth009,-120,120,jetPt80"
