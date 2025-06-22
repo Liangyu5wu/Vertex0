@@ -107,16 +107,110 @@ echo ""
 echo "Moving plots to $OUTPUT_FOLDER..."
 find . -maxdepth 1 -name "*.png" -type f -exec mv {} $OUTPUT_FOLDER/ \;
 
+# Extract eventCell histogram bin counts
+echo ""
+echo "Extracting eventCell histogram bin counts..."
+
+EVENT_COUNTS=()
+EVENT_COUNT_DESCRIPTIONS=()
+
+for i in "${!ANALYSIS_TASKS[@]}"; do
+    TASK="${ANALYSIS_TASKS[i]}"
+    IFS=',' read -r MODE INPUT_FILE OUTPUT_BASE FIT_MIN FIT_MAX DESCRIPTION <<< "$TASK"
+    
+    echo "  Checking eventCell histogram in: $INPUT_FILE"
+    
+    # Check if input file exists
+    if [ ! -f "$INPUT_FILE" ]; then
+        echo "    Warning: Input file not found. Skipping..."
+        continue
+    fi
+    
+    # Use direct ROOT command to extract bin count
+    TEMP_OUTPUT=$(mktemp)
+    {
+        echo "TFile *f = TFile::Open(\"$INPUT_FILE\", \"READ\");"
+        echo "if (!f || f->IsZombie()) { cout << \"ERROR: Cannot open file\" << endl; } else {"
+        echo "  TH1F *h = (TH1F*)f->Get(\"eventCell\");"
+        echo "  if (!h) { cout << \"ERROR: Cannot find eventCell histogram\" << endl; } else {"
+        echo "    cout << \"HISTOGRAM_INFO: Bins=\" << h->GetNbinsX() << \", Min=\" << h->GetXaxis()->GetXmin() << \", Max=\" << h->GetXaxis()->GetXmax() << endl;"
+        echo "    int bin_zero = h->FindBin(0.0);"
+        echo "    double count_zero = h->GetBinContent(bin_zero);"
+        echo "    cout << \"BIN_AT_ZERO: \" << bin_zero << endl;"
+        echo "    cout << \"COUNT_AT_ZERO: \" << count_zero << endl;"
+        echo "    // Also check first few bins"
+        echo "    for(int i=1; i<=5; i++) {"
+        echo "      double count = h->GetBinContent(i);"
+        echo "      double binCenter = h->GetBinCenter(i);"
+        echo "      cout << \"BIN_\" << i << \": center=\" << binCenter << \", count=\" << count << endl;"
+        echo "    }"
+        echo "    double total_entries = h->GetEntries();"
+        echo "    cout << \"TOTAL_ENTRIES: \" << total_entries << endl;"
+        echo "  }"
+        echo "  f->Close();"
+        echo "}"
+        echo ".q"
+    } | timeout 60 root -l -b > $TEMP_OUTPUT 2>&1
+    
+    # Read the output and extract information
+    ROOT_OUTPUT_CELL=$(cat $TEMP_OUTPUT)
+    
+    echo "    ROOT output:"
+    echo "$ROOT_OUTPUT_CELL" | grep -E "(HISTOGRAM_INFO|BIN_AT_ZERO|COUNT_AT_ZERO|BIN_|TOTAL_ENTRIES|ERROR)" | sed 's/^/      /'
+    
+    # Extract the count at x=0
+    COUNT_AT_ZERO=$(echo "$ROOT_OUTPUT_CELL" | grep "COUNT_AT_ZERO:" | sed 's/COUNT_AT_ZERO: //')
+    
+    if [ ! -z "$COUNT_AT_ZERO" ]; then
+        # Convert to integer (remove decimal part if present)
+        COUNT_INT=$(echo "$COUNT_AT_ZERO" | cut -d'.' -f1)
+        EVENT_COUNTS+=("$COUNT_INT")
+        EVENT_COUNT_DESCRIPTIONS+=("$DESCRIPTION")
+        echo "    ✓ Found count at x=0: $COUNT_INT"
+    else
+        echo "    ✗ Failed to extract count"
+        
+        # Check if we can extract total entries as fallback
+        TOTAL_ENTRIES=$(echo "$ROOT_OUTPUT_CELL" | grep "TOTAL_ENTRIES:" | sed 's/TOTAL_ENTRIES: //')
+        if [ ! -z "$TOTAL_ENTRIES" ]; then
+            TOTAL_INT=$(echo "$TOTAL_ENTRIES" | cut -d'.' -f1)
+            echo "    Found total entries: $TOTAL_INT"
+            read -t 10 -p "    Use total entries as count? (y/n): " use_total
+            if [ "$use_total" = "y" ]; then
+                EVENT_COUNTS+=("$TOTAL_INT")
+                EVENT_COUNT_DESCRIPTIONS+=("$DESCRIPTION")
+                echo "    ✓ Using total entries: $TOTAL_INT"
+            fi
+        else
+            # Manual entry option
+            read -t 10 -p "    Enter 'm' for manual input: " choice
+            if [ "$choice" = "m" ]; then
+                read -p "      Enter event count: " manual_count
+                if [ ! -z "$manual_count" ]; then
+                    EVENT_COUNTS+=("$manual_count")
+                    EVENT_COUNT_DESCRIPTIONS+=("$DESCRIPTION")
+                    echo "    ✓ Manual count stored: $manual_count"
+                fi
+            fi
+        fi
+    fi
+    
+    # Cleanup
+    rm -f $TEMP_OUTPUT
+done
+
 # Generate summary
+echo ""
 echo "Generating summary file: $SUMMARY_FILE"
 
 cat > $SUMMARY_FILE << EOF
 Analysis Summary
 ================
 Generated on: $(date)
-Successful analyses: ${#MEANS[@]}/${#ANALYSIS_TASKS[@]}
+Successful fit analyses: ${#MEANS[@]}/${#ANALYSIS_TASKS[@]}
+Successful bin counts: ${#EVENT_COUNTS[@]}/${#ANALYSIS_TASKS[@]}
 
-Results:
+Fit Results:
 EOF
 
 for i in "${!DESCRIPTIONS[@]}"; do
@@ -127,19 +221,41 @@ done
 
 cat >> $SUMMARY_FILE << EOF
 
+EventCell Bin Counts:
+EOF
+
+for i in "${!EVENT_COUNT_DESCRIPTIONS[@]}"; do
+    cat >> $SUMMARY_FILE << EOF
+${EVENT_COUNT_DESCRIPTIONS[i]}: ${EVENT_COUNTS[i]} events
+EOF
+done
+
+cat >> $SUMMARY_FILE << EOF
+
 Python Arrays:
+# Fit results
 means = [$(IFS=','; echo "${MEANS[*]}")]
 sigmas = [$(IFS=','; echo "${SIGMAS[*]}")]
-labels = [$(printf "'%s'," "${DESCRIPTIONS[@]}" | sed 's/,$//')]
+fit_labels = [$(printf "'%s'," "${DESCRIPTIONS[@]}" | sed 's/,$//')]
+
+# Event counts
+event_counts = [$(IFS=','; echo "${EVENT_COUNTS[*]}")]
+count_labels = [$(printf "'%s'," "${EVENT_COUNT_DESCRIPTIONS[@]}" | sed 's/,$//')]
 EOF
 
 echo ""
 echo "=== Analysis Complete ==="
-echo "Successful: ${#MEANS[@]}/${#ANALYSIS_TASKS[@]}"
+echo "Fit results: ${#MEANS[@]}/${#ANALYSIS_TASKS[@]}"
+echo "Event counts: ${#EVENT_COUNTS[@]}/${#ANALYSIS_TASKS[@]}"
 echo ""
 echo "Python-ready arrays:"
+echo "# Fit results"
 echo "means = [$(IFS=','; echo "${MEANS[*]}")]"
 echo "sigmas = [$(IFS=','; echo "${SIGMAS[*]}")]"
-echo "labels = [$(printf "'%s'," "${DESCRIPTIONS[@]}" | sed 's/,$//')]"
+echo "fit_labels = [$(printf "'%s'," "${DESCRIPTIONS[@]}" | sed 's/,$//')]"
+echo ""
+echo "# Event counts"
+echo "event_counts = [$(IFS=','; echo "${EVENT_COUNTS[*]}")]"
+echo "count_labels = [$(printf "'%s'," "${EVENT_COUNT_DESCRIPTIONS[@]}" | sed 's/,$//')]"
 echo ""
 echo "Files saved in: $OUTPUT_FOLDER"
