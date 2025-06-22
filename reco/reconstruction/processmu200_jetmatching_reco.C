@@ -301,12 +301,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             selectedJetWidth.push_back(std::get<3>(jet));
         }
 
-        selectedJetCountHist->Fill(selectedJetPt.size());
-
-        if (selectedJetPt.empty()) {
-            continue;
-        }
-
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
             if (!truthVtxIsHS->at(i)) continue;
             totalTruthVertices++;
@@ -340,6 +334,12 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                                              + (vtx_y - reco_vtx_y)*(vtx_y - reco_vtx_y)
                                              + (vtx_z - reco_vtx_z)*(vtx_z - reco_vtx_z));
             if (reco_dz_distance > 2) continue;
+
+            selectedJetCountHist->Fill(selectedJetPt.size());
+
+            //if (selectedJetPt.empty()) {
+            //    continue;
+            //}
 
             // Fill jet width histogram for events that pass all cuts
             for (size_t k = 0; k < selectedJetWidth.size(); ++k) {
