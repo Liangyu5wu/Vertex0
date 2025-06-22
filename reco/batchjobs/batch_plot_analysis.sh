@@ -4,8 +4,8 @@
 # Usage: ./batch_plot_analysis.sh
 
 # Configuration
-OUTPUT_FOLDER="analysis_results_jetpt"
-SUMMARY_FILE="${OUTPUT_FOLDER}/analysis_summary_jetpt.txt"
+OUTPUT_FOLDER="analysis_results_pt"
+SUMMARY_FILE="${OUTPUT_FOLDER}/analysis_summary_pt.txt"
 ROOT_MACRO="plot_recotime.C"
 
 mkdir -p $OUTPUT_FOLDER
@@ -13,6 +13,29 @@ echo "Created output directory: $OUTPUT_FOLDER"
 
 # Define analysis tasks
 # Format: "mode,inputFile,outputBase,fitMin,fitMax,description"
+# ANALYSIS_TASKS=(
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.01.root,jetwidth001,-120,120,jetPt30"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.03.root,jetwidth003,-120,120,jetPt40"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.05.root,jetwidth005,-120,120,jetPt50"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.06.root,jetwidth006,-120,120,jetPt60"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.08.root,jetwidth008,-120,120,jetPt70"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.09.root,jetwidth009,-120,120,jetPt80"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.10.root,jetwidth010,-120,120,jetPt90"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.12.root,jetwidth012,-120,120,jetPt100"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.14.root,jetwidth014,-120,120,jetPt110"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.15.root,jetwidth015,-120,120,jetPt120"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.17.root,jetwidth017,-120,120,jetPt140"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.18.root,jetwidth018,-120,120,jetPt160"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.19.root,jetwidth019,-120,120,jetPt180"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.21.root,jetwidth021,-120,120,jetPt200"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.22.root,jetwidth022,-120,120,jetPt400"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.24.root,jetwidth024,-120,120,jetPt400"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.25.root,jetwidth025,-120,120,jetPt400"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.27.root,jetwidth027,-120,120,jetPt400"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.28.root,jetwidth028,-120,120,jetPt400"
+#     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to0.30.root,jetwidth030,-120,120,jetPt400"
+# )
+
 ANALYSIS_TASKS=(
     "0,jetmatching_reconstruction_Eover2.0_jetPt30to100000_dR0.3_jetWidth0.00to1.00.root,jetPt30to100000,-120,120,jetPt30"
     "0,jetmatching_reconstruction_Eover2.0_jetPt40to100000_dR0.3_jetWidth0.00to1.00.root,jetPt40to100000,-120,120,jetPt40"
@@ -199,6 +222,98 @@ for i in "${!ANALYSIS_TASKS[@]}"; do
     rm -f $TEMP_OUTPUT
 done
 
+# Extract selectedJetCount histogram bin counts
+echo ""
+echo "Extracting selectedJetCount histogram bin counts..."
+
+JET_COUNT_COUNTS=()
+JET_COUNT_COUNT_DESCRIPTIONS=()
+
+for i in "${!ANALYSIS_TASKS[@]}"; do
+    TASK="${ANALYSIS_TASKS[i]}"
+    IFS=',' read -r MODE INPUT_FILE OUTPUT_BASE FIT_MIN FIT_MAX DESCRIPTION <<< "$TASK"
+    
+    echo "  Checking selectedJetCount histogram in: $INPUT_FILE"
+    
+    # Check if input file exists
+    if [ ! -f "$INPUT_FILE" ]; then
+        echo "    Warning: Input file not found. Skipping..."
+        continue
+    fi
+    
+    # Use direct ROOT command to extract bin count
+    TEMP_OUTPUT=$(mktemp)
+    {
+        echo "TFile *f = TFile::Open(\"$INPUT_FILE\", \"READ\");"
+        echo "if (!f || f->IsZombie()) { cout << \"ERROR: Cannot open file\" << endl; } else {"
+        echo "  TH1F *h = (TH1F*)f->Get(\"selectedJetCount\");"
+        echo "  if (!h) { cout << \"ERROR: Cannot find selectedJetCount histogram\" << endl; } else {"
+        echo "    cout << \"JETCOUNT_HISTOGRAM_INFO: Bins=\" << h->GetNbinsX() << \", Min=\" << h->GetXaxis()->GetXmin() << \", Max=\" << h->GetXaxis()->GetXmax() << endl;"
+        echo "    int bin_zero = h->FindBin(0.0);"
+        echo "    double count_zero = h->GetBinContent(bin_zero);"
+        echo "    cout << \"JETCOUNT_BIN_AT_ZERO: \" << bin_zero << endl;"
+        echo "    cout << \"JETCOUNT_COUNT_AT_ZERO: \" << count_zero << endl;"
+        echo "    // Also check first few bins"
+        echo "    for(int i=1; i<=5; i++) {"
+        echo "      double count = h->GetBinContent(i);"
+        echo "      double binCenter = h->GetBinCenter(i);"
+        echo "      cout << \"JETCOUNT_BIN_\" << i << \": center=\" << binCenter << \", count=\" << count << endl;"
+        echo "    }"
+        echo "    double total_entries = h->GetEntries();"
+        echo "    cout << \"JETCOUNT_TOTAL_ENTRIES: \" << total_entries << endl;"
+        echo "  }"
+        echo "  f->Close();"
+        echo "}"
+        echo ".q"
+    } | timeout 60 root -l -b > $TEMP_OUTPUT 2>&1
+    
+    # Read the output and extract information
+    ROOT_OUTPUT_JETCOUNT=$(cat $TEMP_OUTPUT)
+    
+    echo "    ROOT output:"
+    echo "$ROOT_OUTPUT_JETCOUNT" | grep -E "(JETCOUNT_HISTOGRAM_INFO|JETCOUNT_BIN_AT_ZERO|JETCOUNT_COUNT_AT_ZERO|JETCOUNT_BIN_|JETCOUNT_TOTAL_ENTRIES|ERROR)" | sed 's/^/      /'
+    
+    # Extract the count at x=0
+    JETCOUNT_COUNT_AT_ZERO=$(echo "$ROOT_OUTPUT_JETCOUNT" | grep "JETCOUNT_COUNT_AT_ZERO:" | sed 's/JETCOUNT_COUNT_AT_ZERO: //')
+    
+    if [ ! -z "$JETCOUNT_COUNT_AT_ZERO" ]; then
+        # Convert to integer (remove decimal part if present)
+        JETCOUNT_COUNT_INT=$(echo "$JETCOUNT_COUNT_AT_ZERO" | cut -d'.' -f1)
+        JET_COUNT_COUNTS+=("$JETCOUNT_COUNT_INT")
+        JET_COUNT_COUNT_DESCRIPTIONS+=("$DESCRIPTION")
+        echo "    ✓ Found jet count at x=0: $JETCOUNT_COUNT_INT"
+    else
+        echo "    ✗ Failed to extract jet count"
+        
+        # Check if we can extract total entries as fallback
+        JETCOUNT_TOTAL_ENTRIES=$(echo "$ROOT_OUTPUT_JETCOUNT" | grep "JETCOUNT_TOTAL_ENTRIES:" | sed 's/JETCOUNT_TOTAL_ENTRIES: //')
+        if [ ! -z "$JETCOUNT_TOTAL_ENTRIES" ]; then
+            JETCOUNT_TOTAL_INT=$(echo "$JETCOUNT_TOTAL_ENTRIES" | cut -d'.' -f1)
+            echo "    Found total entries: $JETCOUNT_TOTAL_INT"
+            read -t 10 -p "    Use total entries as jet count? (y/n): " use_total
+            if [ "$use_total" = "y" ]; then
+                JET_COUNT_COUNTS+=("$JETCOUNT_TOTAL_INT")
+                JET_COUNT_COUNT_DESCRIPTIONS+=("$DESCRIPTION")
+                echo "    ✓ Using total entries: $JETCOUNT_TOTAL_INT"
+            fi
+        else
+            # Manual entry option
+            read -t 10 -p "    Enter 'm' for manual input: " choice
+            if [ "$choice" = "m" ]; then
+                read -p "      Enter jet count: " manual_jet_count
+                if [ ! -z "$manual_jet_count" ]; then
+                    JET_COUNT_COUNTS+=("$manual_jet_count")
+                    JET_COUNT_COUNT_DESCRIPTIONS+=("$DESCRIPTION")
+                    echo "    ✓ Manual jet count stored: $manual_jet_count"
+                fi
+            fi
+        fi
+    fi
+    
+    # Cleanup
+    rm -f $TEMP_OUTPUT
+done
+
 # Generate summary
 echo ""
 echo "Generating summary file: $SUMMARY_FILE"
@@ -209,6 +324,7 @@ Analysis Summary
 Generated on: $(date)
 Successful fit analyses: ${#MEANS[@]}/${#ANALYSIS_TASKS[@]}
 Successful bin counts: ${#EVENT_COUNTS[@]}/${#ANALYSIS_TASKS[@]}
+Successful jet counts: ${#JET_COUNT_COUNTS[@]}/${#ANALYSIS_TASKS[@]}
 
 Fit Results:
 EOF
@@ -232,6 +348,17 @@ done
 
 cat >> $SUMMARY_FILE << EOF
 
+SelectedJetCount Bin Counts:
+EOF
+
+for i in "${!JET_COUNT_COUNT_DESCRIPTIONS[@]}"; do
+    cat >> $SUMMARY_FILE << EOF
+${JET_COUNT_COUNT_DESCRIPTIONS[i]}: ${JET_COUNT_COUNTS[i]} events
+EOF
+done
+
+cat >> $SUMMARY_FILE << EOF
+
 Python Arrays:
 # Fit results
 means = [$(IFS=','; echo "${MEANS[*]}")]
@@ -241,12 +368,17 @@ fit_labels = [$(printf "'%s'," "${DESCRIPTIONS[@]}" | sed 's/,$//')]
 # Event counts
 event_counts = [$(IFS=','; echo "${EVENT_COUNTS[*]}")]
 count_labels = [$(printf "'%s'," "${EVENT_COUNT_DESCRIPTIONS[@]}" | sed 's/,$//')]
+
+# Jet counts
+jet_counts = [$(IFS=','; echo "${JET_COUNT_COUNTS[*]}")]
+jet_count_labels = [$(printf "'%s'," "${JET_COUNT_COUNT_DESCRIPTIONS[@]}" | sed 's/,$//')]
 EOF
 
 echo ""
 echo "=== Analysis Complete ==="
 echo "Fit results: ${#MEANS[@]}/${#ANALYSIS_TASKS[@]}"
 echo "Event counts: ${#EVENT_COUNTS[@]}/${#ANALYSIS_TASKS[@]}"
+echo "Jet counts: ${#JET_COUNT_COUNTS[@]}/${#ANALYSIS_TASKS[@]}"
 echo ""
 echo "Python-ready arrays:"
 echo "# Fit results"
@@ -257,5 +389,9 @@ echo ""
 echo "# Event counts"
 echo "event_counts = [$(IFS=','; echo "${EVENT_COUNTS[*]}")]"
 echo "count_labels = [$(printf "'%s'," "${EVENT_COUNT_DESCRIPTIONS[@]}" | sed 's/,$//')]"
+echo ""
+echo "# Jet counts"
+echo "jet_counts = [$(IFS=','; echo "${JET_COUNT_COUNTS[*]}")]"
+echo "jet_count_labels = [$(printf "'%s'," "${JET_COUNT_COUNT_DESCRIPTIONS[@]}" | sed 's/,$//')]"
 echo ""
 echo "Files saved in: $OUTPUT_FOLDER"
