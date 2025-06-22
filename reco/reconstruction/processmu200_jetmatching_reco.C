@@ -59,6 +59,7 @@ TH1F *emeCellHist;
 TH1F *embCellHist;
 
 TH1F *selectedJetWidthHist;
+TH1F *selectedJetCountHist;
 
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
@@ -144,21 +145,25 @@ void initialize_histograms() {
     emeTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     emeTimeHist->GetYaxis()->SetTitle("Events");
 
-    eventCellHist = new TH1F("eventCell", "Cells Used", 500, 0, 500);
+    eventCellHist = new TH1F("eventCell", "Cells Used", 501, 0, 500);
     eventCellHist->GetXaxis()->SetTitle("Cells Used");
     eventCellHist->GetYaxis()->SetTitle("Events");
 
-    emeCellHist = new TH1F("emeCell", "Cells Used (EME Only)", 500, 0, 500);
+    emeCellHist = new TH1F("emeCell", "Cells Used (EME Only)", 501, 0, 500);
     emeCellHist->GetXaxis()->SetTitle("Cells Used");
     emeCellHist->GetYaxis()->SetTitle("Events");
 
-    embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 500, 0, 500);
+    embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 501, 0, 500);
     embCellHist->GetXaxis()->SetTitle("Cells Used");
     embCellHist->GetYaxis()->SetTitle("Events");
 
     selectedJetWidthHist = new TH1F("selectedJetWidth", "Selected Jet Width Distribution", 100, 0, 0.4);
     selectedJetWidthHist->GetXaxis()->SetTitle("Jet Width");
     selectedJetWidthHist->GetYaxis()->SetTitle("Jets");
+
+    selectedJetCountHist = new TH1F("selectedJetCount", "Number of Selected Jets per Event", 101, 0, 100);
+    selectedJetCountHist->GetXaxis()->SetTitle("Number of Jets");
+    selectedJetCountHist->GetYaxis()->SetTitle("Events");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -294,6 +299,12 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             selectedJetEta.push_back(std::get<1>(jet));
             selectedJetPhi.push_back(std::get<2>(jet));
             selectedJetWidth.push_back(std::get<3>(jet));
+        }
+
+        selectedJetCountHist->Fill(selectedJetPt.size());
+
+        if (selectedJetPt.empty()) {
+            continue;
         }
 
         for (size_t i = 0; i < truthVtxTime->size(); ++i) {
@@ -591,6 +602,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     emeCellHist->Write();
 
     selectedJetWidthHist->Write();
+    selectedJetCountHist->Write();
 
     outputFile->Close();
 
@@ -621,6 +633,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete emeCellHist;
 
     delete selectedJetWidthHist;
+    delete selectedJetCountHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
