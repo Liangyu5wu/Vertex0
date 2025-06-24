@@ -61,6 +61,9 @@ TH1F *embCellHist;
 TH1F *selectedJetWidthHist;
 TH1F *selectedJetCountHist;
 
+TH1F *jetTimeHist;
+TH1F *jetDeltaTimeHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
@@ -164,6 +167,14 @@ void initialize_histograms() {
     selectedJetCountHist = new TH1F("selectedJetCount", "Number of Selected Jets per Event", 101, 0, 100);
     selectedJetCountHist->GetXaxis()->SetTitle("Number of Jets");
     selectedJetCountHist->GetYaxis()->SetTitle("Events");
+
+    jetTimeHist = new TH1F("jetTime", "Reconstructed Jet Time", bins, min_range, max_range);
+    jetTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
+    jetTimeHist->GetYaxis()->SetTitle("Jets");
+    
+    jetDeltaTimeHist = new TH1F("jetDeltaTime", "Delta t0 (Jet Level)", bins, min_range, max_range);
+    jetDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
+    jetDeltaTimeHist->GetYaxis()->SetTitle("Jets");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -337,6 +348,9 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
             selectedJetCountHist->Fill(selectedJetPt.size());
 
+            std::vector<double> jet_weighted_sum(selectedJetPt.size(), 0.0);
+            std::vector<double> jet_weight_sum(selectedJetPt.size(), 0.0);
+
             //if (selectedJetPt.empty()) {
             //    continue;
             //}
@@ -362,6 +376,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
                 float cell_eta = cellEta->at(j);
                 float cell_phi = cellPhi->at(j);
+
+                std::vector<int> matchedJetIndices;
                 
                 bool isCloseToJet = false;
                 for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
@@ -381,7 +397,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                     
                     if (DeltaR < deltaRThreshold) {
                         isCloseToJet = true;
-                        break;
+                        matchedJetIndices.push_back(jetIdx);
                     }
                 }
 
@@ -423,6 +439,12 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                     weighted_sum += adjusted_time * weight;
                     weight_sum += weight;
                     all_cell_used_counter++;
+
+
+                    for (int matchedJetIdx : matchedJetIndices) {
+                        jet_weighted_sum[matchedJetIdx] += adjusted_time * weight;
+                        jet_weight_sum[matchedJetIdx] += weight;
+                    }
 
                     if (is_barrel) {
                         emb_cell_used_counter++;
@@ -521,6 +543,17 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 eme3DeltaTimeHist->Fill(delta_event_time_eme3);
                 eme3TimeHist->Fill(event_time_eme3);
             }
+
+
+            for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
+                if (jet_weight_sum[jetIdx] > 0) {
+                    float jet_time = jet_weighted_sum[jetIdx] / jet_weight_sum[jetIdx];
+                    float delta_jet_time = jet_time - vtx_time;
+                    
+                    jetTimeHist->Fill(jet_time);
+                    jetDeltaTimeHist->Fill(delta_jet_time);
+                }
+            }
             
             break; // Only process the first valid truth vertex per event
         }
@@ -603,6 +636,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
 
     selectedJetWidthHist->Write();
     selectedJetCountHist->Write();
+    jetTimeHist->Write();
+    jetDeltaTimeHist->Write();
 
     outputFile->Close();
 
@@ -634,6 +669,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
 
     delete selectedJetWidthHist;
     delete selectedJetCountHist;
+    delete jetTimeHist;
+    delete jetDeltaTimeHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
