@@ -301,15 +301,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
         std::vector<std::tuple<float, float, float, float>> candidateJets;
 
-        int allMatchedJetsCount = 0;
-        for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
-            bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
-            bool isInenoughPt = (TopoJetsPt->at(j) >= 30);
-            if (hasMatch && isInenoughPt) {
-                allMatchedJetsCount++;
-            }
-        }
-
         for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
             bool isInPtRange = (TopoJetsPt->at(j) >= jetPtMin && TopoJetsPt->at(j) <= jetPtMax);
             bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
@@ -369,6 +360,17 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                                              + (vtx_y - reco_vtx_y)*(vtx_y - reco_vtx_y)
                                              + (vtx_z - reco_vtx_z)*(vtx_z - reco_vtx_z));
             if (reco_dz_distance > 2) continue;
+
+            int allMatchedJetsCount = 0;
+            for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
+                bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
+                bool isInEnoughPt = (TopoJetsPt->at(j) >= 30);
+                if (hasMatch && isInEnoughPt) {
+                    allMatchedJetsCount++;
+                    allMatchedJetPtHist->Fill(TopoJetsPt->at(j));
+                    allMatchedJetWidthHist->Fill(TopoJetsWidth->at(j));
+                }
+            }
 
             allMatchedJetCountHist->Fill(allMatchedJetsCount);
             selectedJetCountHist->Fill(selectedJetPt.size());
