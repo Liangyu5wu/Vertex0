@@ -64,6 +64,8 @@ TH1F *selectedJetCountHist;
 TH1F *jetTimeHist;
 TH1F *jetDeltaTimeHist;
 TH1F *allMatchedJetCountHist;
+TH1F *allMatchedJetPtHist;
+TH1F *allMatchedJetWidthHist;
 
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
@@ -180,6 +182,14 @@ void initialize_histograms() {
     allMatchedJetCountHist = new TH1F("allMatchedJetCount", "Number of All Matched HS Jets per Event", 101, 0, 100);
     allMatchedJetCountHist->GetXaxis()->SetTitle("Number of Jets");
     allMatchedJetCountHist->GetYaxis()->SetTitle("Events");
+
+    allMatchedJetPtHist = new TH1F("allMatchedJetPt", "PT of All Matched HS Jets", 200, 0, 200);
+    allMatchedJetPtHist->GetXaxis()->SetTitle("Jet pT [GeV]");
+    allMatchedJetPtHist->GetYaxis()->SetTitle("Jets");
+    
+    allMatchedJetWidthHist = new TH1F("allMatchedJetWidth", "Width of All Matched HS Jets", 100, 0, 0.4);
+    allMatchedJetWidthHist->GetXaxis()->SetTitle("Jet Width");
+    allMatchedJetWidthHist->GetYaxis()->SetTitle("Jets");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -654,6 +664,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     jetTimeHist->Write();
     jetDeltaTimeHist->Write();
     allMatchedJetCountHist->Write();
+    allMatchedJetPtHist->Write();
+    allMatchedJetWidthHist->Write();
 
     outputFile->Close();
 
@@ -688,6 +700,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete jetTimeHist;
     delete jetDeltaTimeHist;
     delete allMatchedJetCountHist;
+    delete allMatchedJetPtHist;
+    delete allMatchedJetWidthHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
