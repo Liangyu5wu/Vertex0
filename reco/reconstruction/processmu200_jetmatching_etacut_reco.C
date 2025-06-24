@@ -295,7 +295,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
         int allMatchedJetsCount = 0;
         for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
             bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
-            if (hasMatch) {
+            bool isInenoughPt = (TopoJetsPt->at(j) >= 30);
+            if (hasMatch && isInenoughPt) {
                 allMatchedJetsCount++;
             }
         }
