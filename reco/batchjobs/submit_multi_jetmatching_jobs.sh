@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 
 # Usage: ./submit_multi_jetmatching_jobs.sh
 # This script submits multiple jobs with predefined parameter sets
@@ -9,7 +9,7 @@ SUBMIT_DIR="jetmatching_jobs_$(date +%Y%m%d_%H%M%S)"
 mkdir -p $SUBMIT_DIR
 echo "Created submission directory: $SUBMIT_DIR"
 
-PT_MIN=170.0
+PT_MIN=30.0
 PT_MAX=100000.0
 
 PARAMETER_SETS=(
