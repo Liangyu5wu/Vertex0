@@ -183,7 +183,7 @@ void initialize_histograms() {
     allMatchedJetCountHist->GetXaxis()->SetTitle("Number of Jets");
     allMatchedJetCountHist->GetYaxis()->SetTitle("Events");
 
-    allMatchedJetPtHist = new TH1F("allMatchedJetPt", "PT of All Matched HS Jets", 200, 0, 200);
+    allMatchedJetPtHist = new TH1F("allMatchedJetPt", "PT of All Matched HS Jets", 2000, 0, 10000);
     allMatchedJetPtHist->GetXaxis()->SetTitle("Jet pT [GeV]");
     allMatchedJetPtHist->GetYaxis()->SetTitle("Jets");
     
