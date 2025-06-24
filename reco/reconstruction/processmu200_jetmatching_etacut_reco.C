@@ -67,6 +67,8 @@ TH1F *allMatchedJetCountHist;
 TH1F *allMatchedJetPtHist;
 TH1F *allMatchedJetWidthHist;
 
+TH1F *jetEM1FractionHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
@@ -190,6 +192,10 @@ void initialize_histograms() {
     allMatchedJetWidthHist = new TH1F("allMatchedJetWidth", "Width of All Matched HS Jets", 100, 0, 0.4);
     allMatchedJetWidthHist->GetXaxis()->SetTitle("Jet Width");
     allMatchedJetWidthHist->GetYaxis()->SetTitle("Jets");
+
+    jetEM1FractionHist = new TH1F("jetEM1Fraction", "EM1 Layer Energy Fraction of Selected Jets", 100, 0, 1);
+    jetEM1FractionHist->GetXaxis()->SetTitle("EM1 Energy Fraction");
+    jetEM1FractionHist->GetYaxis()->SetTitle("Jets");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -379,6 +385,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
             std::vector<double> jet_weighted_sum(selectedJetPt.size(), 0.0);
             std::vector<double> jet_weight_sum(selectedJetPt.size(), 0.0);
+            std::vector<double> jet_total_energy(selectedJetPt.size(), 0.0);
+            std::vector<double> jet_em1_energy(selectedJetPt.size(), 0.0);
 
             //if (selectedJetPt.empty()) {
             //    continue;
@@ -406,6 +414,11 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 float cell_eta = cellEta->at(j);
                 float cell_phi = cellPhi->at(j);
 
+                bool is_barrel = cellIsEMBarrel->at(j);
+                bool is_endcap = cellIsEMEndCap->at(j);
+                int layer = cellLayer->at(j);
+                float energy = cellE->at(j);
+
                 std::vector<int> matchedJetIndices;
                 
                 bool isCloseToJet = false;
@@ -427,6 +440,11 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                     if (DeltaR < deltaRThreshold) {
                         isCloseToJet = true;
                         matchedJetIndices.push_back(jetIdx);
+
+                        jet_total_energy[jetIdx] += energy;
+                        if ((is_barrel || is_endcap) && layer == 1) {
+                            jet_em1_energy[jetIdx] += energy;
+                        }
                     }
                 }
 
@@ -442,12 +460,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                                                      + (cell_y - reco_vtx_y)*(cell_y - reco_vtx_y)
                                                      + (cell_z - reco_vtx_z)*(cell_z - reco_vtx_z));
                 float corrected_time = cell_time + distance_to_origin / c_light - distance_vtx_to_cell / c_light;
-
-                bool is_barrel = cellIsEMBarrel->at(j);
-                bool is_endcap = cellIsEMEndCap->at(j);
-
-                int layer = cellLayer->at(j);
-                float energy = cellE->at(j);
 
                 int bin = -1;
                 if (energy > 1 && energy <= 1.5) bin = 0;
@@ -504,6 +516,13 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                             weight_sum_eme3 += weight;
                         }
                     }
+                }
+            }
+
+            for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
+                if (jet_total_energy[jetIdx] > 0) {
+                    float em1_fraction = jet_em1_energy[jetIdx] / jet_total_energy[jetIdx];
+                    jetEM1FractionHist->Fill(em1_fraction);
                 }
             }
 
@@ -671,6 +690,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     allMatchedJetCountHist->Write();
     allMatchedJetPtHist->Write();
     allMatchedJetWidthHist->Write();
+    jetEM1FractionHist->Write();
 
     outputFile->Close();
 
@@ -707,6 +727,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete allMatchedJetCountHist;
     delete allMatchedJetPtHist;
     delete allMatchedJetWidthHist;
+    delete jetEM1FractionHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
