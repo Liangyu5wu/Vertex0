@@ -63,6 +63,7 @@ TH1F *selectedJetCountHist;
 
 TH1F *jetTimeHist;
 TH1F *jetDeltaTimeHist;
+TH1F *allMatchedJetCountHist;
 
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
@@ -175,6 +176,10 @@ void initialize_histograms() {
     jetDeltaTimeHist = new TH1F("jetDeltaTime", "Delta t0 (Jet Level)", bins, min_range, max_range);
     jetDeltaTimeHist->GetXaxis()->SetTitle("Delta t0 [ps]");
     jetDeltaTimeHist->GetYaxis()->SetTitle("Jets");
+
+    allMatchedJetCountHist = new TH1F("allMatchedJetCount", "Number of All Matched HS Jets per Event", 101, 0, 100);
+    allMatchedJetCountHist->GetXaxis()->SetTitle("Number of Jets");
+    allMatchedJetCountHist->GetYaxis()->SetTitle("Events");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -286,6 +291,14 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
         std::vector<std::tuple<float, float, float, float>> candidateJets;
 
+        int allMatchedJetsCount = 0;
+        for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
+            bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
+            if (hasMatch) {
+                allMatchedJetsCount++;
+            }
+        }
+
         for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
             bool isInPtRange = (TopoJetsPt->at(j) >= jetPtMin && TopoJetsPt->at(j) <= jetPtMax);
             bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
@@ -346,6 +359,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                                              + (vtx_z - reco_vtx_z)*(vtx_z - reco_vtx_z));
             if (reco_dz_distance > 2) continue;
 
+            allMatchedJetCountHist->Fill(allMatchedJetsCount);
             selectedJetCountHist->Fill(selectedJetPt.size());
 
             std::vector<double> jet_weighted_sum(selectedJetPt.size(), 0.0);
@@ -638,6 +652,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     selectedJetCountHist->Write();
     jetTimeHist->Write();
     jetDeltaTimeHist->Write();
+    allMatchedJetCountHist->Write();
 
     outputFile->Close();
 
@@ -671,6 +686,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete selectedJetCountHist;
     delete jetTimeHist;
     delete jetDeltaTimeHist;
+    delete allMatchedJetCountHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
