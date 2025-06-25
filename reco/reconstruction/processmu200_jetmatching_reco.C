@@ -531,7 +531,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 if (jet_total_energy[jetIdx] > 0) {
                     float em1_fraction = jet_em1_energy[jetIdx] / jet_total_energy[jetIdx];
                     
-                    if (em1_fraction <= jetEM1FractionCut) {
+                    if (em1_fraction >= jetEM1FractionCut) {
                         jetEM1FractionHist->Fill(em1_fraction);
                         
                         if (jet_weight_sum[jetIdx] > 0) {
