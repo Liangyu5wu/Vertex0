@@ -58,14 +58,16 @@ TH1F *eventCellHist;
 TH1F *emeCellHist;
 TH1F *embCellHist;
 
+TH1F *selectedJetPtHist;
 TH1F *selectedJetWidthHist;
 TH1F *selectedJetCountHist;
 
 TH1F *jetTimeHist;
 TH1F *jetDeltaTimeHist;
-TH1F *allMatchedJetCountHist;
+
 TH1F *allMatchedJetPtHist;
 TH1F *allMatchedJetWidthHist;
+TH1F *allMatchedJetCountHist;
 
 TH1F *jetEM1FractionHist;
 
@@ -164,6 +166,10 @@ void initialize_histograms() {
     embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 501, 0, 500);
     embCellHist->GetXaxis()->SetTitle("Cells Used");
     embCellHist->GetYaxis()->SetTitle("Events");
+
+    selectedJetPtHist = new TH1F("selectedJetPt", "Selected Jet PT Distribution", 2000, 0, 10000);
+    selectedJetPtHist->GetXaxis()->SetTitle("Jet pT [GeV]");
+    selectedJetPtHist->GetYaxis()->SetTitle("Jets");
 
     selectedJetWidthHist = new TH1F("selectedJetWidth", "Selected Jet Width Distribution", 100, 0, 0.4);
     selectedJetWidthHist->GetXaxis()->SetTitle("Jet Width");
@@ -395,6 +401,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             // Fill jet width histogram for events that pass all cuts
             for (size_t k = 0; k < selectedJetWidth.size(); ++k) {
                 selectedJetWidthHist->Fill(selectedJetWidth[k]);
+                selectedJetPtHist->Fill(selectedJetPt[k]);
             }
 
             double weighted_sum = 0.0, weight_sum = 0.0;
@@ -683,13 +690,15 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     embCellHist->Write();
     emeCellHist->Write();
 
+    selectedJetPtHist->Write();
     selectedJetWidthHist->Write();
     selectedJetCountHist->Write();
     jetTimeHist->Write();
     jetDeltaTimeHist->Write();
-    allMatchedJetCountHist->Write();
+
     allMatchedJetPtHist->Write();
     allMatchedJetWidthHist->Write();
+    allMatchedJetCountHist->Write();
     jetEM1FractionHist->Write();
 
     outputFile->Close();
@@ -720,6 +729,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete embCellHist;
     delete emeCellHist;
 
+    delete selectedJetPtHist;
     delete selectedJetWidthHist;
     delete selectedJetCountHist;
     delete jetTimeHist;
