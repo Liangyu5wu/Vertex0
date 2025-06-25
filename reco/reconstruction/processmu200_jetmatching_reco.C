@@ -70,6 +70,7 @@ TH1F *allMatchedJetWidthHist;
 TH1F *allMatchedJetCountHist;
 
 TH1F *jetEM1FractionHist;
+TH1F *jetEM12FractionHist;
 
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
@@ -202,6 +203,10 @@ void initialize_histograms() {
     jetEM1FractionHist = new TH1F("jetEM1Fraction", "EM1 Layer Energy Fraction of Selected Jets", 100, 0, 1.5);
     jetEM1FractionHist->GetXaxis()->SetTitle("EM1 Energy Fraction");
     jetEM1FractionHist->GetYaxis()->SetTitle("Jets");
+
+    jetEM12FractionHist = new TH1F("jetEM12Fraction", "EM1+EM2 Layers Energy Fraction of Selected Jets", 100, 0, 1.5);
+    jetEM12FractionHist->GetXaxis()->SetTitle("EM1+EM2 Energy Fraction");
+    jetEM12FractionHist->GetYaxis()->SetTitle("Jets");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -232,7 +237,7 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
 
 void process_file(const std::string &filename, float energyThreshold = 1.0, float jetPtMin = 30.0, float jetPtMax = 1000.0,
                   float deltaRThreshold = 0.3, int maxJets = -1, float jetWidthMin = 0.0, float jetWidthMax = 1.0, 
-                  float jetEM1FractionCut = 1.1) {
+                  float jetEM1FractionCut = 1.1, float jetEM12FractionCut = 1.1) { 
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -392,6 +397,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             std::vector<double> jet_weight_sum(selectedJetPt.size(), 0.0);
             std::vector<double> jet_total_energy(selectedJetPt.size(), 0.0);
             std::vector<double> jet_em1_energy(selectedJetPt.size(), 0.0);
+            std::vector<double> jet_em12_energy(selectedJetPt.size(), 0.0);
 
             //if (selectedJetPt.empty()) {
             //    continue;
@@ -450,6 +456,10 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                         jet_total_energy[jetIdx] += energy;
                         if ((is_barrel || is_endcap) && layer == 1) {
                             jet_em1_energy[jetIdx] += energy;
+                            jet_em12_energy[jetIdx] += energy;
+                        }
+                        if ((is_barrel || is_endcap) && layer == 2) {
+                            jet_em12_energy[jetIdx] += energy;
                         }
                     }
                 }
@@ -530,17 +540,25 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
                 if (jet_total_energy[jetIdx] > 0) {
                     float em1_fraction = jet_em1_energy[jetIdx] / jet_total_energy[jetIdx];
-                    
-                    if (em1_fraction >= jetEM1FractionCut) {
+                    float em12_fraction = jet_em12_energy[jetIdx] / jet_total_energy[jetIdx];
+
+                    bool passEM1Cut = (em1_fraction >= jetEM1FractionCut);
+                    bool passEM12Cut = (em12_fraction >= jetEM12FractionCut);
+
+                    if (passEM1Cut) {
                         jetEM1FractionHist->Fill(em1_fraction);
+                    }
+                    
+                    if (passEM12Cut) {
+                        jetEM12FractionHist->Fill(em12_fraction);
+                    }
+
+                    if (passEM1Cut && passEM12Cut && jet_weight_sum[jetIdx] > 0) {
+                        float jet_time = jet_weighted_sum[jetIdx] / jet_weight_sum[jetIdx];
+                        float delta_jet_time = jet_time - vtx_time;
                         
-                        if (jet_weight_sum[jetIdx] > 0) {
-                            float jet_time = jet_weighted_sum[jetIdx] / jet_weight_sum[jetIdx];
-                            float delta_jet_time = jet_time - vtx_time;
-                            
-                            jetTimeHist->Fill(jet_time);
-                            jetDeltaTimeHist->Fill(delta_jet_time);
-                        }
+                        jetTimeHist->Fill(jet_time);
+                        jetDeltaTimeHist->Fill(delta_jet_time);
                     }
                 }
             }
@@ -622,7 +640,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
 void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46, 
                                   float jetPtMin = 30.0, float jetPtMax = 1000.0, float deltaRThreshold = 0.3, int maxJets = -1,
-                                  float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEM1FractionCut = 1.1) { 
+                                  float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEM1FractionCut = 1.1,
+                                  float jetEM12FractionCut = 1.1) { 
 
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
     gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
@@ -638,7 +657,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), energyThreshold, jetPtMin, jetPtMax, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax, jetEM1FractionCut);
+            process_file(filename.str(), energyThreshold, jetPtMin, jetPtMax, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax, jetEM1FractionCut, jetEM12FractionCut);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -657,7 +676,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
         outputFilename << "_maxJets" << maxJets;
     }
     outputFilename << "_jetWidth" << std::setprecision(2) << jetWidthMin << "to" << jetWidthMax
-                  << "_EM1frac" << std::setprecision(2) << jetEM1FractionCut;
+                  << "_EM1frac" << std::setprecision(2) << jetEM1FractionCut
+                  << "_EM12frac" << std::setprecision(2) << jetEM12FractionCut;
     outputFilename << ".root";
 
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
@@ -701,6 +721,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     allMatchedJetCountHist->Write();
     allMatchedJetWidthHist->Write();
     jetEM1FractionHist->Write();
+    jetEM12FractionHist->Write();
 
     outputFile->Close();
 
@@ -739,6 +760,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete allMatchedJetPtHist;
     delete allMatchedJetWidthHist;
     delete jetEM1FractionHist;
+    delete jetEM12FractionHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
@@ -748,5 +770,6 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     std::cout << "  Delta R threshold: " << deltaRThreshold << std::endl;
     std::cout << "  Max jets per event: " << (maxJets > 0 ? std::to_string(maxJets) : "all") << std::endl;
     std::cout << "  Jet width range: " << jetWidthMin << " to " << jetWidthMax << std::endl;
-    std::cout << "  Jet EM1 fraction cut: <= " << jetEM1FractionCut << std::endl;
+    std::cout << "  Jet EM1 fraction cut: >= " << jetEM1FractionCut << std::endl;
+    std::cout << "  Jet EM1+EM2 fraction cut: >= " << jetEM12FractionCut << std::endl;
 }
