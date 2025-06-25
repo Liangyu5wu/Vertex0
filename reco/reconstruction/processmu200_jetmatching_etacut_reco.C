@@ -193,7 +193,7 @@ void initialize_histograms() {
     allMatchedJetWidthHist->GetXaxis()->SetTitle("Jet Width");
     allMatchedJetWidthHist->GetYaxis()->SetTitle("Jets");
 
-    jetEM1FractionHist = new TH1F("jetEM1Fraction", "EM1 Layer Energy Fraction of Selected Jets", 100, 0, 1);
+    jetEM1FractionHist = new TH1F("jetEM1Fraction", "EM1 Layer Energy Fraction of Selected Jets", 100, 0, 1.5);
     jetEM1FractionHist->GetXaxis()->SetTitle("EM1 Energy Fraction");
     jetEM1FractionHist->GetYaxis()->SetTitle("Jets");
 }
