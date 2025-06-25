@@ -232,7 +232,7 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
 
 void process_file(const std::string &filename, float energyThreshold = 1.0, float jetPtMin = 30.0, float jetPtMax = 1000.0,
                   float deltaRThreshold = 0.3, int maxJets = -1, float jetWidthMin = 0.0, float jetWidthMax = 1.0,
-                  float jetEtaCut = 2.0) {
+                  float jetEtaCut = 2.0, float jetEM1FractionCut = 1.1) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -529,7 +529,18 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
                 if (jet_total_energy[jetIdx] > 0) {
                     float em1_fraction = jet_em1_energy[jetIdx] / jet_total_energy[jetIdx];
-                    jetEM1FractionHist->Fill(em1_fraction);
+                    
+                    if (em1_fraction <= jetEM1FractionCut) {
+                        jetEM1FractionHist->Fill(em1_fraction);
+                        
+                        if (jet_weight_sum[jetIdx] > 0) {
+                            float jet_time = jet_weighted_sum[jetIdx] / jet_weight_sum[jetIdx];
+                            float delta_jet_time = jet_time - vtx_time;
+                            
+                            jetTimeHist->Fill(jet_time);
+                            jetDeltaTimeHist->Fill(delta_jet_time);
+                        }
+                    }
                 }
             }
 
@@ -598,17 +609,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 eme3DeltaTimeHist->Fill(delta_event_time_eme3);
                 eme3TimeHist->Fill(event_time_eme3);
             }
-
-
-            for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
-                if (jet_weight_sum[jetIdx] > 0) {
-                    float jet_time = jet_weighted_sum[jetIdx] / jet_weight_sum[jetIdx];
-                    float delta_jet_time = jet_time - vtx_time;
-                    
-                    jetTimeHist->Fill(jet_time);
-                    jetDeltaTimeHist->Fill(delta_jet_time);
-                }
-            }
             
             break; // Only process the first valid truth vertex per event
         }
@@ -621,7 +621,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
 void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46, 
                                   float jetPtMin = 30.0, float jetPtMax = 1000.0, float deltaRThreshold = 0.3, int maxJets = -1,
-                                  float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEtaCut = 2.0) {
+                                  float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEtaCut = 2.0, float jetEM1FractionCut = 1.1) {
 
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
     gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
@@ -637,7 +637,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), energyThreshold, jetPtMin, jetPtMax, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax, jetEtaCut);
+            process_file(filename.str(), energyThreshold, jetPtMin, jetPtMax, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax, jetEtaCut, jetEM1FractionCut);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -656,7 +656,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
         outputFilename << "_maxJets" << maxJets;
     }
     outputFilename << "_jetWidth" << std::setprecision(2) << jetWidthMin << "to" << jetWidthMax;
-    outputFilename << "_jetEta" << std::setprecision(1) << jetEtaCut;
+    outputFilename << "_jetEta" << std::setprecision(1) << jetEtaCut
+                << "_EM1frac" << std::setprecision(2) << jetEM1FractionCut;
     outputFilename << ".root";
 
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
@@ -748,4 +749,5 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     std::cout << "  Max jets per event: " << (maxJets > 0 ? std::to_string(maxJets) : "all") << std::endl;
     std::cout << "  Jet width range: " << jetWidthMin << " to " << jetWidthMax << std::endl;
     std::cout << "  Jet eta cut: |eta| <= " << jetEtaCut << std::endl;
+    std::cout << "  Jet EM1 fraction cut: <= " << jetEM1FractionCut << std::endl;
 }
