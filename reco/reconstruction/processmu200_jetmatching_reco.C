@@ -583,7 +583,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                         sum_weights += e_i;
                     }
                     
-                    if (sum_weights > 0 && jet_cell_r_e[jetIdx].size() > 1) {
+                    //if (sum_weights > 0 && jet_cell_r_e[jetIdx].size() > 1) {
+                    if (sum_weights > 0) {
                         sigma = std::sqrt(sigma / sum_weights);
                         jetLongWidthSigmaHist->Fill(sigma);
                     }
