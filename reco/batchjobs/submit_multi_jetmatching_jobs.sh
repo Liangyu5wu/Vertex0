@@ -4,15 +4,34 @@
 # This script submits multiple jobs with predefined parameter sets
 
 BASE_DIR="/sdf/data/atlas/u/liangyu/vertextiming/user.scheong.mc21_14TeV.601229.PhPy8EG_A14_ttbar_hdamp258p75_SingleLep.SuperNtuple.e8514_s4345_r15583.20250219_Output"
-
 SUBMIT_DIR="jetmatching_jobs_$(date +%Y%m%d_%H%M%S)"
 mkdir -p $SUBMIT_DIR
 echo "Created submission directory: $SUBMIT_DIR"
 
 PT_MIN=30.0
 PT_MAX=100000.0
-ETA_CUT=2.5
-EM1F_CUT=1.1
+ETA_CUT=0.5
+EM1F_CUT=0.0
+EM12F_CUT=0.0
+LongWidthCut=100000.0
+LongWidthSigmaCut=100000.0
+
+PARAMETER_SETS=(
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, ${LongWidthCut}, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 500, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 1000, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 1500, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 2000, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 2500, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 3000, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 3500, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 4000, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 4500, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 5000, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 5500, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 6000, ${LongWidthSigmaCut}"
+    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${ETA_CUT}, ${EM1F_CUT}, ${EM12F_CUT}, 6500, ${LongWidthSigmaCut}"
+)
 
 # PARAMETER_SETS=(
 #     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,0.015, ${ETA_CUT}"
@@ -37,20 +56,20 @@ EM1F_CUT=1.1
 #     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,0.300, ${ETA_CUT}"
 # )
 
-PARAMETER_SETS=(
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.0"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.1"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.2"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.3"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.4"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.5"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.6"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.7"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.8"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.9"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 1.0"
-    "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 1.1"
-)
+# PARAMETER_SETS=(
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.0"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.1"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.2"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.3"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.4"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.5"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.6"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.7"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.8"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 0.9"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 1.0"
+#     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,1.000, ${EM1F_CUT}, 1.1"
+# )
 
 # PARAMETER_SETS=(
 #     "2.0,1,46,${PT_MIN},${PT_MAX},0.3,-1,0.00,0.015"
