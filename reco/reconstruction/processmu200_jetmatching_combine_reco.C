@@ -567,14 +567,12 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
             for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
 
-                float saved_longitudinal_width = 999999.9;
+                float longitudinal_width = 999999.9;
                 float saved_sigma = 999999.9;
 
                 if (jet_e_sum_for_width[jetIdx] > 0) {
 
-                    float longitudinal_width = jet_weighted_r_sum[jetIdx] / jet_e_sum_for_width[jetIdx];
-                    jetLongWidthHist->Fill(longitudinal_width);
-                    saved_longitudinal_width = longitudinal_width;
+                    longitudinal_width = jet_weighted_r_sum[jetIdx] / jet_e_sum_for_width[jetIdx];
 
                     double sigma = 0.0;
                     double sum_weights = 0.0;
@@ -590,7 +588,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                     //if (sum_weights > 0 && jet_cell_r_e[jetIdx].size() > 1) {
                     if (sum_weights > 0) {
                         sigma = std::sqrt(sigma / sum_weights);
-                        jetLongWidthSigmaHist->Fill(sigma);
                         saved_sigma = sigma;
                     }
                 }
@@ -601,7 +598,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
                     bool passEM1Cut = (em1_fraction >= jetEM1FractionCut);
                     bool passEM12Cut = (em12_fraction >= jetEM12FractionCut);
-                    bool passLongWidthCut = (saved_longitudinal_width <= jetLongWidthCut);
+                    bool passLongWidthCut = (longitudinal_width <= jetLongWidthCut);
                     bool passLongWidthSigmaCut = (saved_sigma <= jetLongWidthSigmaCut);
 
                     if (passEM1Cut) {
@@ -618,6 +615,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                         
                         jetTimeHist->Fill(jet_time);
                         jetDeltaTimeHist->Fill(delta_jet_time);
+                        jetLongWidthHist->Fill(longitudinal_width);
+                        jetLongWidthSigmaHist->Fill(saved_sigma);
                     }
                 }
             }
