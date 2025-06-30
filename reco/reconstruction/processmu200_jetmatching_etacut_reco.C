@@ -211,7 +211,7 @@ void initialize_histograms() {
     jetEM12FractionHist->GetXaxis()->SetTitle("EM1+EM2 Energy Fraction");
     jetEM12FractionHist->GetYaxis()->SetTitle("Jets");
 
-    jetLongWidthHist = new TH1F("jetLongWidth", "Longitudinal Width of Selected Jets", 1000, 0, 5000);
+    jetLongWidthHist = new TH1F("jetLongWidth", "Longitudinal Width of Selected Jets", 1000, 500, 6500);
     jetLongWidthHist->GetXaxis()->SetTitle("Longitudinal Width [mm]");
     jetLongWidthHist->GetYaxis()->SetTitle("Jets");
 
