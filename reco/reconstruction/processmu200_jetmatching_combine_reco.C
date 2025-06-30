@@ -589,14 +589,15 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                     }
                 }
 
+                bool passLongWidthCut = (longitudinal_width <= jetLongWidthCut);
+                bool passLongWidthSigmaCut = (sigma <= jetLongWidthSigmaCut);
+
                 if (jet_total_energy[jetIdx] > 0) {
                     float em1_fraction = jet_em1_energy[jetIdx] / jet_total_energy[jetIdx];
                     float em12_fraction = jet_em12_energy[jetIdx] / jet_total_energy[jetIdx];
 
                     bool passEM1Cut = (em1_fraction >= jetEM1FractionCut);
                     bool passEM12Cut = (em12_fraction >= jetEM12FractionCut);
-                    bool passLongWidthCut = (longitudinal_width <= jetLongWidthCut);
-                    bool passLongWidthSigmaCut = (sigma <= jetLongWidthSigmaCut);
 
                     if (passEM1Cut) {
                         jetEM1FractionHist->Fill(em1_fraction);
