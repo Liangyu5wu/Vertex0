@@ -215,7 +215,7 @@ void initialize_histograms() {
     jetLongWidthHist->GetXaxis()->SetTitle("Longitudinal Width [mm]");
     jetLongWidthHist->GetYaxis()->SetTitle("Jets");
 
-    jetLongWidthSigmaHist = new TH1F("jetLongWidthSigma", "Sigma of Longitudinal Energy Distribution", 1000, 0, 3000);
+    jetLongWidthSigmaHist = new TH1F("jetLongWidthSigma", "Sigma of Longitudinal Energy Distribution", 100, 0, 3000);
     jetLongWidthSigmaHist->GetXaxis()->SetTitle("Longitudinal Width Sigma [mm]");
     jetLongWidthSigmaHist->GetYaxis()->SetTitle("Jets");
 }
@@ -247,9 +247,9 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
 }
 
 void process_file(const std::string &filename, float energyThreshold = 1.0, float jetPtMin = 30.0, float jetPtMax = 1000.0,
-                  float deltaRThreshold = 0.3, int maxJets = -1, float jetWidthMin = 0.0, float jetWidthMax = 1.0, 
-                  float jetEM1FractionCut = 1.1, float jetEM12FractionCut = 1.1, 
-                  float jetLongWidthCut = 10000.0, float jetLongWidthSigmaCut = 10000.0) { 
+                  float deltaRThreshold = 0.3, int maxJets = -1, float jetWidthMin = 0.0, float jetWidthMax = 1.0,
+                  float jetEtaCut = 2.0, float jetEM1FractionCut = 1.1, float jetEM12FractionCut = 1.1, 
+                  float jetLongWidthCut = 10000.0, float jetLongWidthSigmaCut = 10000.0) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -337,8 +337,9 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             bool isInPtRange = (TopoJetsPt->at(j) >= jetPtMin && TopoJetsPt->at(j) <= jetPtMax);
             bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
             bool isWidthInRange = (TopoJetsWidth->at(j) >= jetWidthMin && TopoJetsWidth->at(j) <= jetWidthMax);
+            bool isInEtaRange = (std::fabs(TopoJetsEta->at(j)) <= jetEtaCut);
             
-            if (isInPtRange && hasMatch && isWidthInRange) {
+            if (isInPtRange && hasMatch && isWidthInRange && isInEtaRange) {
                 candidateJets.push_back(std::make_tuple(TopoJetsPt->at(j), TopoJetsEta->at(j), 
                                                        TopoJetsPhi->at(j), TopoJetsWidth->at(j)));
             }
@@ -483,7 +484,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
                         jet_e_sum_for_width[jetIdx] += energy;
                         jet_weighted_r_sum[jetIdx] += r_i * energy;
-
                         jet_weighted_r_squared_sum[jetIdx] += r_i * r_i * energy;
 
                         jet_total_energy[jetIdx] += energy;
@@ -562,8 +562,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                             weight_sum_eme3 += weight;
                         }
                     }
-
-
                 }
             }
 
@@ -695,8 +693,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
 void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46, 
                                   float jetPtMin = 30.0, float jetPtMax = 1000.0, float deltaRThreshold = 0.3, int maxJets = -1,
-                                  float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEM1FractionCut = 1.1,
-                                  float jetEM12FractionCut = 1.1, float jetLongWidthCut = 10000.0, float jetLongWidthSigmaCut = 10000.0) { 
+                                  float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEtaCut = 2.0, float jetEM1FractionCut = 1.1,
+                                  float jetEM12FractionCut = 1.1, float jetLongWidthCut = 10000.0, float jetLongWidthSigmaCut = 10000.0) {
 
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
     gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
@@ -714,7 +712,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), energyThreshold, jetPtMin, jetPtMax, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax, jetEM1FractionCut, jetEM12FractionCut,
+            process_file(filename.str(), energyThreshold, jetPtMin, jetPtMax, deltaRThreshold, maxJets, jetWidthMin, jetWidthMax, jetEtaCut, jetEM1FractionCut, jetEM12FractionCut,
                         jetLongWidthCut, jetLongWidthSigmaCut);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
@@ -733,8 +731,9 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     if (maxJets > 0) {
         outputFilename << "_maxJets" << maxJets;
     }
-    outputFilename << "_jetWidth" << std::setprecision(2) << jetWidthMin << "to" << jetWidthMax
-                  << "_EM1frac" << std::setprecision(2) << jetEM1FractionCut
+    outputFilename << "_jetWidth" << std::setprecision(2) << jetWidthMin << "to" << jetWidthMax;
+    outputFilename << "_jetEta" << std::setprecision(1) << jetEtaCut
+                << "_EM1frac" << std::setprecision(2) << jetEM1FractionCut
                   << "_EM12frac" << std::setprecision(2) << jetEM12FractionCut;
     outputFilename << "_LW" << std::setprecision(0) << jetLongWidthCut;
     outputFilename << "_LWS" << std::setprecision(0) << jetLongWidthSigmaCut;
@@ -778,8 +777,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     jetDeltaTimeHist->Write();
 
     allMatchedJetPtHist->Write();
-    allMatchedJetCountHist->Write();
     allMatchedJetWidthHist->Write();
+    allMatchedJetCountHist->Write();
     jetEM1FractionHist->Write();
     jetEM12FractionHist->Write();
     jetLongWidthHist->Write();
@@ -834,6 +833,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     std::cout << "  Delta R threshold: " << deltaRThreshold << std::endl;
     std::cout << "  Max jets per event: " << (maxJets > 0 ? std::to_string(maxJets) : "all") << std::endl;
     std::cout << "  Jet width range: " << jetWidthMin << " to " << jetWidthMax << std::endl;
+    std::cout << "  Jet eta cut: |eta| <= " << jetEtaCut << std::endl;
     std::cout << "  Jet EM1 fraction cut: >= " << jetEM1FractionCut << std::endl;
     std::cout << "  Jet EM1+EM2 fraction cut: >= " << jetEM12FractionCut << std::endl;
     std::cout << "  Jet longitudinal width cut: <= " << jetLongWidthCut << " mm" << std::endl;
