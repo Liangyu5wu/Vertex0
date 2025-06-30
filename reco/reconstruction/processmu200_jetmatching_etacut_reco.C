@@ -73,6 +73,7 @@ TH1F *jetEM1FractionHist;
 TH1F *jetEM12FractionHist;
 
 TH1F *jetLongWidthHist;
+TH1F *jetLongWidthSigmaHist;
 
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
@@ -213,6 +214,10 @@ void initialize_histograms() {
     jetLongWidthHist = new TH1F("jetLongWidth", "Longitudinal Width of Selected Jets", 1000, 0, 2000);
     jetLongWidthHist->GetXaxis()->SetTitle("Longitudinal Width [mm]");
     jetLongWidthHist->GetYaxis()->SetTitle("Jets");
+
+    jetLongWidthSigmaHist = new TH1F("jetLongWidthSigma", "Sigma of Longitudinal Energy Distribution", 500, 0, 1000);
+    jetLongWidthSigmaHist->GetXaxis()->SetTitle("Longitudinal Width Sigma [mm]");
+    jetLongWidthSigmaHist->GetYaxis()->SetTitle("Jets");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -410,6 +415,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
             std::vector<double> jet_weighted_r_sum(selectedJetPt.size(), 0.0);
             std::vector<double> jet_e_sum_for_width(selectedJetPt.size(), 0.0);
+            std::vector<double> jet_weighted_r_squared_sum(selectedJetPt.size(), 0.0);
+            std::vector<std::vector<std::pair<float, float>>> jet_cell_r_e(selectedJetPt.size());
 
             //if (selectedJetPt.empty()) {
             //    continue;
@@ -472,8 +479,11 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                         isCloseToJet = true;
                         matchedJetIndices.push_back(jetIdx);
 
+                        jet_cell_r_e[jetIdx].push_back(std::make_pair(r_i, energy));
+
                         jet_e_sum_for_width[jetIdx] += energy;
                         jet_weighted_r_sum[jetIdx] += r_i * energy;
+                        jet_weighted_r_squared_sum[jetIdx] += r_i * r_i * energy;
 
                         jet_total_energy[jetIdx] += energy;
                         if ((is_barrel || is_endcap) && layer == 1) {
@@ -562,6 +572,22 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
                     float longitudinal_width = jet_weighted_r_sum[jetIdx] / jet_e_sum_for_width[jetIdx];
                     jetLongWidthHist->Fill(longitudinal_width);
+
+                    double sigma = 0.0;
+                    double sum_weights = 0.0;
+                    
+                    for (const auto& cell_info : jet_cell_r_e[jetIdx]) {
+                        float r_i = cell_info.first;
+                        float e_i = cell_info.second;
+                        
+                        sigma += e_i * (r_i - longitudinal_width) * (r_i - longitudinal_width);
+                        sum_weights += e_i;
+                    }
+                    
+                    if (sum_weights > 0 && jet_cell_r_e[jetIdx].size() > 1) {
+                        sigma = std::sqrt(sigma / sum_weights);
+                        jetLongWidthSigmaHist->Fill(sigma);
+                    }
                 }
 
                 if (jet_total_energy[jetIdx] > 0) {
@@ -671,6 +697,8 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
 
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
     gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
+    gInterpreter->GenerateDictionary("vector<pair<float,float> >", "vector;utility");
+    gInterpreter->GenerateDictionary("vector<vector<pair<float,float> > >", "vector;utility");
     totalTruthVertices = 0;
     unmatchedVertices = 0;
     initialize_histograms();
@@ -750,6 +778,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     jetEM1FractionHist->Write();
     jetEM12FractionHist->Write();
     jetLongWidthHist->Write();
+    jetLongWidthSigmaHist->Write();
 
     outputFile->Close();
 
@@ -790,6 +819,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete jetEM1FractionHist;
     delete jetEM12FractionHist;
     delete jetLongWidthHist;
+    delete jetLongWidthSigmaHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
