@@ -72,6 +72,8 @@ TH1F *allMatchedJetCountHist;
 TH1F *jetEM1FractionHist;
 TH1F *jetEM12FractionHist;
 
+TH1F *jetLongWidthHist;
+
 int totalTruthVertices = 0;
 int unmatchedVertices = 0;
 
@@ -207,6 +209,10 @@ void initialize_histograms() {
     jetEM12FractionHist = new TH1F("jetEM12Fraction", "EM1+EM2 Layers Energy Fraction of Selected Jets", 100, 0, 1.5);
     jetEM12FractionHist->GetXaxis()->SetTitle("EM1+EM2 Energy Fraction");
     jetEM12FractionHist->GetYaxis()->SetTitle("Jets");
+
+    jetLongWidthHist = new TH1F("jetLongWidth", "Longitudinal Width of Selected Jets", 1000, 0, 2000);
+    jetLongWidthHist->GetXaxis()->SetTitle("Longitudinal Width [mm]");
+    jetLongWidthHist->GetYaxis()->SetTitle("Jets");
 }
 
 float get_mean(bool is_barrel, int layer, int energy_bin) {
@@ -270,6 +276,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
     std::vector<float> *cellPhi = nullptr;
     std::vector<bool> *cellIsEMBarrel = nullptr;
     std::vector<bool> *cellIsEMEndCap = nullptr;
+    std::vector<bool> *cellIsTile = nullptr; 
     std::vector<int> *cellLayer = nullptr;
     std::vector<float> *cellSignificance = nullptr;
     std::vector<float> *TopoJetsPt = nullptr;
@@ -296,6 +303,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
     tree->SetBranchAddress("Cell_phi", &cellPhi);
     tree->SetBranchAddress("Cell_isEM_Barrel", &cellIsEMBarrel);
     tree->SetBranchAddress("Cell_isEM_EndCap", &cellIsEMEndCap);
+    tree->SetBranchAddress("Cell_isTile", &cellIsTile);
     tree->SetBranchAddress("Cell_layer", &cellLayer);
     tree->SetBranchAddress("Cell_significance", &cellSignificance);
     tree->SetBranchAddress("AntiKt4EMTopoJets_pt", &TopoJetsPt);
@@ -400,6 +408,9 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             std::vector<double> jet_em1_energy(selectedJetPt.size(), 0.0);
             std::vector<double> jet_em12_energy(selectedJetPt.size(), 0.0);
 
+            std::vector<double> jet_weighted_r_sum(selectedJetPt.size(), 0.0);
+            std::vector<double> jet_e_sum_for_width(selectedJetPt.size(), 0.0);
+
             //if (selectedJetPt.empty()) {
             //    continue;
             //}
@@ -426,11 +437,18 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
                 float cell_eta = cellEta->at(j);
                 float cell_phi = cellPhi->at(j);
+                float cell_x = cellX->at(j);
+                float cell_y = cellY->at(j);
+                float cell_z = cellZ->at(j);
 
                 bool is_barrel = cellIsEMBarrel->at(j);
                 bool is_endcap = cellIsEMEndCap->at(j);
+                bool isTile = cellIsTile->at(j);
+                if (!is_barrel && !is_endcap && !isTile) continue;
                 int layer = cellLayer->at(j);
                 float energy = cellE->at(j);
+
+                float r_i = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z);
 
                 std::vector<int> matchedJetIndices;
                 
@@ -453,6 +471,9 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                     if (DeltaR < deltaRThreshold) {
                         isCloseToJet = true;
                         matchedJetIndices.push_back(jetIdx);
+
+                        jet_e_sum_for_width[jetIdx] += energy;
+                        jet_weighted_r_sum[jetIdx] += r_i * energy;
 
                         jet_total_energy[jetIdx] += energy;
                         if ((is_barrel || is_endcap) && layer == 1) {
@@ -537,6 +558,12 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             }
 
             for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
+                if (jet_e_sum_for_width[jetIdx] > 0) {
+
+                    float longitudinal_width = jet_weighted_r_sum[jetIdx] / jet_e_sum_for_width[jetIdx];
+                    jetLongWidthHist->Fill(longitudinal_width);
+                }
+
                 if (jet_total_energy[jetIdx] > 0) {
                     float em1_fraction = jet_em1_energy[jetIdx] / jet_total_energy[jetIdx];
                     float em12_fraction = jet_em12_energy[jetIdx] / jet_total_energy[jetIdx];
@@ -722,6 +749,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     allMatchedJetCountHist->Write();
     jetEM1FractionHist->Write();
     jetEM12FractionHist->Write();
+    jetLongWidthHist->Write();
 
     outputFile->Close();
 
@@ -761,6 +789,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     delete allMatchedJetWidthHist;
     delete jetEM1FractionHist;
     delete jetEM12FractionHist;
+    delete jetLongWidthHist;
 
     std::cout << "Event time reconstruction completed. Results saved to " << outputFilename.str() << std::endl;
 
