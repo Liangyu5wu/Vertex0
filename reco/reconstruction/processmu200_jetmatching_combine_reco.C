@@ -215,7 +215,7 @@ void initialize_histograms() {
     jetLongWidthHist->GetXaxis()->SetTitle("Longitudinal Width [mm]");
     jetLongWidthHist->GetYaxis()->SetTitle("Jets");
 
-    jetLongWidthSigmaHist = new TH1F("jetLongWidthSigma", "Sigma of Longitudinal Energy Distribution", 100, 0, 3000);
+    jetLongWidthSigmaHist = new TH1F("jetLongWidthSigma", "Sigma of Longitudinal Energy Distribution", 1000, 0, 3000);
     jetLongWidthSigmaHist->GetXaxis()->SetTitle("Longitudinal Width Sigma [mm]");
     jetLongWidthSigmaHist->GetYaxis()->SetTitle("Jets");
 }
