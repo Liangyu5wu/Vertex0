@@ -499,9 +499,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 if (!isCloseToJet) continue;
 
                 float cell_time = cellTime->at(j);
-                float cell_x = cellX->at(j);
-                float cell_y = cellY->at(j);
-                float cell_z = cellZ->at(j);
 
                 float distance_to_origin = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z);
                 float distance_vtx_to_cell = std::sqrt((cell_x - reco_vtx_x)*(cell_x - reco_vtx_x)
