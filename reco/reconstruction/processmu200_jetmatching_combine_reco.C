@@ -566,10 +566,15 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
             }
 
             for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
+
+                float saved_longitudinal_width = 99999999;
+                float saved_sigma = 99999999;
+
                 if (jet_e_sum_for_width[jetIdx] > 0) {
 
                     float longitudinal_width = jet_weighted_r_sum[jetIdx] / jet_e_sum_for_width[jetIdx];
                     jetLongWidthHist->Fill(longitudinal_width);
+                    saved_longitudinal_width = longitudinal_width;
 
                     double sigma = 0.0;
                     double sum_weights = 0.0;
@@ -586,11 +591,9 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                     if (sum_weights > 0) {
                         sigma = std::sqrt(sigma / sum_weights);
                         jetLongWidthSigmaHist->Fill(sigma);
+                        saved_sigma = sigma;
                     }
                 }
-
-                bool passLongWidthCut = (longitudinal_width <= jetLongWidthCut);
-                bool passLongWidthSigmaCut = (sigma <= jetLongWidthSigmaCut);
 
                 if (jet_total_energy[jetIdx] > 0) {
                     float em1_fraction = jet_em1_energy[jetIdx] / jet_total_energy[jetIdx];
@@ -598,6 +601,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
                     bool passEM1Cut = (em1_fraction >= jetEM1FractionCut);
                     bool passEM12Cut = (em12_fraction >= jetEM12FractionCut);
+                    bool passLongWidthCut = (saved_longitudinal_width <= jetLongWidthCut);
+                    bool passLongWidthSigmaCut = (saved_sigma <= jetLongWidthSigmaCut);
 
                     if (passEM1Cut) {
                         jetEM1FractionHist->Fill(em1_fraction);
