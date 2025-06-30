@@ -567,8 +567,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
 
             for (size_t jetIdx = 0; jetIdx < selectedJetPt.size(); ++jetIdx) {
 
-                float saved_longitudinal_width = 99999999;
-                float saved_sigma = 99999999;
+                float saved_longitudinal_width = 999999.9;
+                float saved_sigma = 999999.9;
 
                 if (jet_e_sum_for_width[jetIdx] > 0) {
 
