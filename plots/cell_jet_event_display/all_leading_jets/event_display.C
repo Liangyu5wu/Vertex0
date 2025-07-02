@@ -5,82 +5,53 @@
 #include <iomanip>
 #include <sstream>
 #include <cmath>
-#include <map>
+#include <algorithm>
+#include <tuple>
 #include <TFile.h>
 #include <TTree.h>
 #include <TH2F.h>
+#include <TH1F.h>
 
 // root -l
 // .L event_display.C
-// event_display_analysis(2.0, 1, 1)
+// event_display_analysis_with_cuts(2, 2.0, 1, 46, 30, 100000, 0.3, 0, 1, 0.8, 0, 0, 10000.0, 0.0, 10000.0)
 
 const double c_light = 0.299792458; // mm/ps
 
-std::vector<int> target_jet_counts = {1, 2, 3, 4, 5, 6, 7, 8};
+// Jet storage
+std::vector<TH2F*> jet_cells_hists;
+std::vector<float> all_jets_pt;
+std::vector<float> all_jets_eta;
+std::vector<float> all_jets_phi;
+std::vector<float> all_jets_long_width;
+std::vector<float> all_jets_long_width_sigma;
 
-// Dynamic histograms storage
-std::map<int, TH2F*> all_cells_hist_map;
-std::map<int, TH2F*> jet_matched_hist_map;
-TH2F *all_cells_coverage_hist;
+int jets_found = 0;
+int jets_with_histograms = 0;
+const int max_jets = 2000;
+const int max_jet_histograms = 20; 
 
-// Dynamic jet information storage
-std::map<int, std::vector<float>> jets_pt_map;
-std::map<int, std::vector<float>> jets_eta_map;
-std::map<int, std::vector<float>> jets_phi_map;
+TH1F *all_jets_eta_hist;
+TH1F *all_jets_phi_hist;
+TH1F *all_jets_long_width_hist;
+TH1F *all_jets_long_width_sigma_hist;
 
-std::map<int, bool> found_events;
+void initialize_summary_histograms() {
+    all_jets_eta_hist = new TH1F("all_jets_eta", "All Selected Jets Eta Distribution;#eta;Number of Jets", 100, -5.0, 5.0);
+    all_jets_phi_hist = new TH1F("all_jets_phi", "All Selected Jets Phi Distribution;#phi;Number of Jets", 100, -4.0, 4.0);
+    all_jets_long_width_hist = new TH1F("all_jets_long_width", "All Selected Jets Longitudinal Width;Width [mm];Number of Jets", 500, 1000, 6000);
+    all_jets_long_width_sigma_hist = new TH1F("all_jets_long_width_sigma", "All Selected Jets Longitudinal Width Sigma;Sigma [mm];Number of Jets", 1000, 0, 3000);
+}
 
-void initialize_histograms() {
-    const int bins_eta = 100;
-    const int bins_phi = 100;
-    const double eta_min = -5.0;
-    const double eta_max = 5.0;
-    const double phi_min = -4.0;
-    const double phi_max = 4.0;
-
-    const int bins_eta_all = 100;
-    const int bins_phi_all = 100;
-    const double eta_min_all = -10.0;
-    const double eta_max_all = 10.0;
-    const double phi_min_all = -10.0;
-    const double phi_max_all = 10.0;
+void process_file(const std::string &filename, int minCells, float energyThreshold = 1.0, 
+                  float jetPtMin = 30.0, float jetPtMax = 1000.0, float deltaRThreshold = 0.3, 
+                  float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEtaCut = 2.0, 
+                  float jetEM1FractionCut = 1.1, float jetEM12FractionCut = 1.1, 
+                  float jetLongWidthCut = 10000.0, float jetLongWidthSigmaMin = 0.0, 
+                  float jetLongWidthSigmaMax = 10000.0) {
     
-    // Create histograms dynamically for each jet count
-    for (int jet_count : target_jet_counts) {
-        std::string name_all = "all_cells_jets" + std::to_string(jet_count);
-        std::string title_all = "All Cells (" + std::to_string(jet_count) + " Jet Event);#eta;#phi";
-        all_cells_hist_map[jet_count] = new TH2F(name_all.c_str(), title_all.c_str(), 
-                                                 bins_eta, eta_min, eta_max, bins_phi, phi_min, phi_max);
-        
-        std::string name_jet = "jet_matched_jets" + std::to_string(jet_count);
-        std::string title_jet = "Jet-matched Cells (" + std::to_string(jet_count) + " Jet Event);#eta;#phi";
-        jet_matched_hist_map[jet_count] = new TH2F(name_jet.c_str(), title_jet.c_str(), 
-                                                   bins_eta, eta_min, eta_max, bins_phi, phi_min, phi_max);
-        
-        // Initialize jet info vectors
-        jets_pt_map[jet_count] = std::vector<float>();
-        jets_eta_map[jet_count] = std::vector<float>();
-        jets_phi_map[jet_count] = std::vector<float>();
-    }
-
-    all_cells_coverage_hist = new TH2F("all_cells_coverage", "All Cells Coverage Check;#eta;#phi", 
-                                       bins_eta_all, eta_min_all, eta_max_all, bins_phi_all, phi_min_all, phi_max_all);
-}
-
-void initialize_tracking() {
-    for (int count : target_jet_counts) {
-        found_events[count] = false;
-    }
-}
-
-bool all_events_found() {
-    for (const auto& pair : found_events) {
-        if (!pair.second) return false;
-    }
-    return true;
-}
-
-void process_file(const std::string &filename, int file_index, float energyThreshold = 1.0, float significanceThreshold = 3.0) {
+    if (jets_found >= max_jets) return;
+    
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -105,12 +76,20 @@ void process_file(const std::string &filename, int file_index, float energyThres
     std::vector<bool> *recoVtxIsHS = nullptr;
     std::vector<bool> *truthVtxIsHS = nullptr;
     std::vector<float> *cellE = nullptr;
+    std::vector<float> *cellX = nullptr;
+    std::vector<float> *cellY = nullptr;
+    std::vector<float> *cellZ = nullptr;
     std::vector<float> *cellEta = nullptr;
     std::vector<float> *cellPhi = nullptr;
+    std::vector<bool> *cellIsEMBarrel = nullptr;
+    std::vector<bool> *cellIsEMEndCap = nullptr;
+    std::vector<bool> *cellIsTile = nullptr;
+    std::vector<int> *cellLayer = nullptr;
     std::vector<float> *cellSignificance = nullptr;
     std::vector<float> *TopoJetsPt = nullptr;
     std::vector<float> *TopoJetsEta = nullptr;
     std::vector<float> *TopoJetsPhi = nullptr;
+    std::vector<float> *TopoJetsWidth = nullptr;
     std::vector<std::vector<int>> *TopoJets_TruthHSJetIdx = nullptr;
 
     tree->SetBranchAddress("TruthVtx_time", &truthVtxTime);
@@ -123,104 +102,232 @@ void process_file(const std::string &filename, int file_index, float energyThres
     tree->SetBranchAddress("RecoVtx_z", &recoVtxZ);
     tree->SetBranchAddress("RecoVtx_isHS", &recoVtxIsHS);
     tree->SetBranchAddress("Cell_e", &cellE);
+    tree->SetBranchAddress("Cell_x", &cellX);
+    tree->SetBranchAddress("Cell_y", &cellY);
+    tree->SetBranchAddress("Cell_z", &cellZ);
     tree->SetBranchAddress("Cell_eta", &cellEta);
     tree->SetBranchAddress("Cell_phi", &cellPhi);
+    tree->SetBranchAddress("Cell_isEM_Barrel", &cellIsEMBarrel);
+    tree->SetBranchAddress("Cell_isEM_EndCap", &cellIsEMEndCap);
+    tree->SetBranchAddress("Cell_isTile", &cellIsTile);
+    tree->SetBranchAddress("Cell_layer", &cellLayer);
     tree->SetBranchAddress("Cell_significance", &cellSignificance);
     tree->SetBranchAddress("AntiKt4EMTopoJets_pt", &TopoJetsPt);
     tree->SetBranchAddress("AntiKt4EMTopoJets_eta", &TopoJetsEta);
     tree->SetBranchAddress("AntiKt4EMTopoJets_phi", &TopoJetsPhi);
+    tree->SetBranchAddress("AntiKt4EMTopoJets_width", &TopoJetsWidth);
     tree->SetBranchAddress("AntiKt4EMTopoJets_truthHSJet_idx", &TopoJets_TruthHSJetIdx);
 
     Long64_t nEntries = tree->GetEntries();
-    for (Long64_t entry = 0; entry < nEntries && !all_events_found(); ++entry) {
+    for (Long64_t entry = 0; entry < nEntries && jets_found < max_jets; ++entry) {
         tree->GetEntry(entry);
 
-        for (size_t j = 0; j < cellE->size(); ++j) {
-            float cell_eta = cellEta->at(j);
-            float cell_phi = cellPhi->at(j);
-            all_cells_coverage_hist->Fill(cell_eta, cell_phi, cellE->at(j));
-        }
-
-        std::vector<float> selectedJetPt;
-        std::vector<float> selectedJetEta;
-        std::vector<float> selectedJetPhi;
-
-        for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
-            bool isHighPt = (TopoJetsPt->at(j) > 30);
-            bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
-            
-            if (isHighPt && hasMatch) {
-                selectedJetPt.push_back(TopoJetsPt->at(j));
-                selectedJetEta.push_back(TopoJetsEta->at(j));
-                selectedJetPhi.push_back(TopoJetsPhi->at(j));
-            }
-        }
-
-        int jet_count = selectedJetPt.size();
+        // Check for valid truth vertex
+        bool hasValidTruthVertex = false;
         
-        if (std::find(target_jet_counts.begin(), target_jet_counts.end(), jet_count) != target_jet_counts.end() 
-            && !found_events[jet_count]) {
+        for (size_t i = 0; i < truthVtxTime->size(); ++i) {
+            if (!truthVtxIsHS->at(i)) continue;
             
-            bool hasValidTruthVertex = false;
-            for (size_t i = 0; i < truthVtxTime->size(); ++i) {
-                if (!truthVtxIsHS->at(i)) continue;
-                
-                float vtx_x = truthVtxX->at(i);
-                float vtx_y = truthVtxY->at(i);
-                float vtx_z = truthVtxZ->at(i);
+            float vtx_x = truthVtxX->at(i);
+            float vtx_y = truthVtxY->at(i);
+            float vtx_z = truthVtxZ->at(i);
 
-                bool foundRecoVtx = false;
-                for (size_t reco_i = 0; reco_i < recoVtxIsHS->size(); ++reco_i) {
-                    if (!recoVtxIsHS->at(reco_i)) continue;
-                    float reco_vtx_x = recoVtxX->at(reco_i);
-                    float reco_vtx_y = recoVtxY->at(reco_i);
-                    float reco_vtx_z = recoVtxZ->at(reco_i);
-                    
-                    float reco_dz_distance = std::sqrt((vtx_x - reco_vtx_x)*(vtx_x - reco_vtx_x)
-                                                     + (vtx_y - reco_vtx_y)*(vtx_y - reco_vtx_y)
-                                                     + (vtx_z - reco_vtx_z)*(vtx_z - reco_vtx_z));
-                    if (reco_dz_distance <= 2) {
-                        foundRecoVtx = true;
-                        break;
-                    }
-                }
+            bool foundRecoVtx = false;
+            for (size_t reco_i = 0; reco_i < recoVtxIsHS->size(); ++reco_i) {
+                if (!recoVtxIsHS->at(reco_i)) continue;
+                float reco_vtx_x = recoVtxX->at(reco_i);
+                float reco_vtx_y = recoVtxY->at(reco_i);
+                float reco_vtx_z = recoVtxZ->at(reco_i);
                 
-                if (foundRecoVtx) {
-                    hasValidTruthVertex = true;
+                float reco_dz_distance = std::sqrt((vtx_x - reco_vtx_x)*(vtx_x - reco_vtx_x)
+                                                 + (vtx_y - reco_vtx_y)*(vtx_y - reco_vtx_y)
+                                                 + (vtx_z - reco_vtx_z)*(vtx_z - reco_vtx_z));
+                if (reco_dz_distance <= 2) {
+                    foundRecoVtx = true;
                     break;
                 }
             }
-
-            if (!hasValidTruthVertex) continue;
-
-            found_events[jet_count] = true;
-            std::cout << "Found event with " << jet_count << " jets: File " << file_index 
-                      << ", Event " << entry << std::endl;
-
-            // Store jet information dynamically
-            for (size_t k = 0; k < selectedJetPt.size(); ++k) {
-                jets_pt_map[jet_count].push_back(selectedJetPt[k]);
-                jets_eta_map[jet_count].push_back(selectedJetEta[k]);
-                jets_phi_map[jet_count].push_back(selectedJetPhi[k]);
+            
+            if (foundRecoVtx) {
+                hasValidTruthVertex = true;
+                break;
             }
+        }
 
-            // Get corresponding histograms
-            TH2F* hist_all = all_cells_hist_map[jet_count];
-            TH2F* hist_jet = jet_matched_hist_map[jet_count];
+        if (!hasValidTruthVertex) continue;
 
-            for (size_t j = 0; j < cellE->size(); ++j) {
-                if (cellE->at(j) < energyThreshold) continue;
-                if (cellSignificance->at(j) < significanceThreshold) continue;
+        // Select jets that pass basic cuts
+        std::vector<int> candidateJetIndices;
+        
+        for (size_t j = 0; j < TopoJetsPt->size(); ++j) {
+            bool isInPtRange = (TopoJetsPt->at(j) >= jetPtMin && TopoJetsPt->at(j) <= jetPtMax);
+            bool hasMatch = (j < TopoJets_TruthHSJetIdx->size() && !TopoJets_TruthHSJetIdx->at(j).empty());
+            bool isWidthInRange = (TopoJetsWidth->at(j) >= jetWidthMin && TopoJetsWidth->at(j) <= jetWidthMax);
+            bool isInEtaRange = (std::fabs(TopoJetsEta->at(j)) <= jetEtaCut);
+            
+            if (isInPtRange && hasMatch && isWidthInRange && isInEtaRange) {
+                candidateJetIndices.push_back(j);
+            }
+        }
 
-                float cell_eta = cellEta->at(j);
-                float cell_phi = cellPhi->at(j);
+        if (candidateJetIndices.empty()) continue;
+
+        // Process each jet individually
+        for (int jetIdx : candidateJetIndices) {
+            if (jets_found >= max_jets) break;
+            
+            float jetEta = TopoJetsEta->at(jetIdx);
+            float jetPhi = TopoJetsPhi->at(jetIdx);
+            
+            float jet_total_energy = 0.0;
+            float jet_em1_energy = 0.0;
+            float jet_em12_energy = 0.0;
+            std::vector<std::pair<float, float>> jet_cell_r_e;
+            
+            // Calculate energy fractions and collect cells for width calculation
+            for (size_t k = 0; k < cellE->size(); ++k) {
+                if (cellE->at(k) < energyThreshold) continue;
+                if (cellSignificance->at(k) < 4.0) continue;
                 
-                if (hist_all) hist_all->Fill(cell_eta, cell_phi, cellE->at(j));
+                float cell_eta = cellEta->at(k);
+                float cell_phi = cellPhi->at(k);
+                float cell_x = cellX->at(k);
+                float cell_y = cellY->at(k);
+                float cell_z = cellZ->at(k);
                 
-                bool isCloseToJet = false;
-                for (size_t jetIdx = 0; jetIdx < selectedJetEta.size(); ++jetIdx) {
-                    float jetEta = selectedJetEta[jetIdx];
-                    float jetPhi = selectedJetPhi[jetIdx];
+                float dEta = jetEta - cell_eta;
+                float dPhi = jetPhi - cell_phi;
+                
+                if (dPhi >= M_PI) {
+                    dPhi -= 2 * M_PI;
+                } else if (dPhi < -M_PI) {
+                    dPhi += 2 * M_PI;
+                }
+                
+                float DeltaR = std::sqrt(dEta * dEta + dPhi * dPhi);
+                
+                if (DeltaR < deltaRThreshold) {
+                    bool is_barrel = cellIsEMBarrel->at(k);
+                    bool is_endcap = cellIsEMEndCap->at(k);
+                    bool isTile = cellIsTile->at(k);
+                    if (!is_barrel && !is_endcap && !isTile) continue;
+                    
+                    int layer = cellLayer->at(k);
+                    float energy = cellE->at(k);
+                    float r_i = std::sqrt(cell_x*cell_x + cell_y*cell_y + cell_z*cell_z);
+                    
+                    jet_total_energy += energy;
+                    if ((is_barrel || is_endcap) && layer == 1) {
+                        jet_em1_energy += energy;
+                        jet_em12_energy += energy;
+                    }
+                    if ((is_barrel || is_endcap) && layer == 2) {
+                        jet_em12_energy += energy;
+                    }
+                    
+                    jet_cell_r_e.push_back(std::make_pair(r_i, energy));
+                }
+            }
+            
+            // Check energy fraction cuts
+            bool passEM1Cut = true;
+            bool passEM12Cut = true;
+            if (jet_total_energy > 0 && jetEM1FractionCut < 1.1 && jetEM12FractionCut < 1.1) {
+                float em1_fraction = jet_em1_energy / jet_total_energy;
+                float em12_fraction = jet_em12_energy / jet_total_energy;
+                passEM1Cut = (em1_fraction > jetEM1FractionCut);
+                passEM12Cut = (em12_fraction > jetEM12FractionCut);
+            }
+            
+            // Calculate longitudinal width and sigma
+            float longitudinal_width = 999999.9;
+            float longitudinal_width_sigma = 999999.9;
+            bool passLongWidthCut = true;
+            bool passLongWidthSigmaCut = true;
+            
+            if (!jet_cell_r_e.empty()) {
+                float weighted_r_sum = 0.0;
+                float e_sum = 0.0;
+                for (const auto& cell_info : jet_cell_r_e) {
+                    weighted_r_sum += cell_info.first * cell_info.second;
+                    e_sum += cell_info.second;
+                }
+                
+                if (e_sum > 0) {
+                    longitudinal_width = weighted_r_sum / e_sum;
+                    passLongWidthCut = (longitudinal_width <= jetLongWidthCut);
+                    
+                    // Calculate sigma
+                    float sigma = 0.0;
+                    for (const auto& cell_info : jet_cell_r_e) {
+                        float r_i = cell_info.first;
+                        float e_i = cell_info.second;
+                        sigma += e_i * (r_i - longitudinal_width) * (r_i - longitudinal_width);
+                    }
+                    longitudinal_width_sigma = std::sqrt(sigma / e_sum);
+                    passLongWidthSigmaCut = (longitudinal_width_sigma >= jetLongWidthSigmaMin && 
+                                           longitudinal_width_sigma <= jetLongWidthSigmaMax);
+                }
+            }
+            
+            if (!passEM1Cut || !passEM12Cut || !passLongWidthCut || !passLongWidthSigmaCut) continue;
+            
+            // Count cells that will be filled for this jet
+            int cellCount = 0;
+            for (size_t k = 0; k < cellE->size(); ++k) {
+                if (cellE->at(k) < energyThreshold) continue;
+                if (cellSignificance->at(k) < 4.0) continue;
+                
+                float cell_eta = cellEta->at(k);
+                float cell_phi = cellPhi->at(k);
+                
+                float dEta = jetEta - cell_eta;
+                float dPhi = jetPhi - cell_phi;
+                
+                if (dPhi >= M_PI) {
+                    dPhi -= 2 * M_PI;
+                } else if (dPhi < -M_PI) {
+                    dPhi += 2 * M_PI;
+                }
+                
+                float DeltaR = std::sqrt(dEta * dEta + dPhi * dPhi);
+                
+                if (DeltaR < deltaRThreshold) {
+                    cellCount++;
+                }
+            }
+            
+            // Check minimum cell count
+            if (cellCount < minCells) continue;
+            
+            all_jets_pt.push_back(TopoJetsPt->at(jetIdx));
+            all_jets_eta.push_back(jetEta);
+            all_jets_phi.push_back(jetPhi);
+            all_jets_long_width.push_back(longitudinal_width);
+            all_jets_long_width_sigma.push_back(longitudinal_width_sigma);
+            
+            // Fill summary histograms
+            all_jets_eta_hist->Fill(jetEta);
+            all_jets_phi_hist->Fill(jetPhi);
+            all_jets_long_width_hist->Fill(longitudinal_width);
+            all_jets_long_width_sigma_hist->Fill(longitudinal_width_sigma);
+            
+            // Create individual jet cell histogram only for first 20 jets
+            if (jets_with_histograms < max_jet_histograms) {
+                std::string jet_name = "jet_" + std::to_string(jets_with_histograms + 1) + "_cells";
+                std::string jet_title = "Jet " + std::to_string(jets_with_histograms + 1) + 
+                                       " Cell Distribution (pT=" + std::to_string(int(TopoJetsPt->at(jetIdx))) + 
+                                       " GeV);#eta;#phi";
+                TH2F* jet_hist = new TH2F(jet_name.c_str(), jet_title.c_str(), 100, -5.0, 5.0, 100, -4.0, 4.0);
+                jet_hist->SetDirectory(0);
+                
+                // Fill the histogram with cells matched to this jet
+                for (size_t k = 0; k < cellE->size(); ++k) {
+                    if (cellE->at(k) < energyThreshold) continue;
+                    if (cellSignificance->at(k) < 4.0) continue;
+                    
+                    float cell_eta = cellEta->at(k);
+                    float cell_phi = cellPhi->at(k);
                     
                     float dEta = jetEta - cell_eta;
                     float dPhi = jetPhi - cell_phi;
@@ -233,16 +340,22 @@ void process_file(const std::string &filename, int file_index, float energyThres
                     
                     float DeltaR = std::sqrt(dEta * dEta + dPhi * dPhi);
                     
-                    if (DeltaR < 0.3) {
-                        isCloseToJet = true;
-                        break;
+                    if (DeltaR < deltaRThreshold) {
+                        jet_hist->Fill(cell_eta, cell_phi, cellE->at(k));
                     }
                 }
-
-                if (isCloseToJet && hist_jet) {
-                    hist_jet->Fill(cell_eta, cell_phi, cellE->at(j));
-                }
+                
+                jet_cells_hists.push_back(jet_hist);
+                jets_with_histograms++;
             }
+            
+            jets_found++;
+            std::cout << "Found jet " << jets_found << " (pT=" << TopoJetsPt->at(jetIdx) 
+                      << " GeV) with " << cellCount << " matched cells";
+            if (jets_with_histograms <= max_jet_histograms) {
+                std::cout << " - histogram created";
+            }
+            std::cout << std::endl;
         }
     }
 
@@ -251,29 +364,54 @@ void process_file(const std::string &filename, int file_index, float energyThres
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void event_display_analysis(float energyThreshold = 1.0, float significanceThreshold = 3.0, int startIndex = 1, int endIndex = 46) {
+void event_display_analysis_with_cuts(int minCells = 5, float energyThreshold = 1.0, 
+                                      int startIndex = 1, int endIndex = 46,
+                                      float jetPtMin = 30.0, float jetPtMax = 1000.0, float deltaRThreshold = 0.3,
+                                      float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEtaCut = 2.0,
+                                      float jetEM1FractionCut = 1.1, float jetEM12FractionCut = 1.1,
+                                      float jetLongWidthCut = 10000.0, float jetLongWidthSigmaMin = 0.0,
+                                      float jetLongWidthSigmaMax = 10000.0) {
+    
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
     gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
+    gInterpreter->GenerateDictionary("vector<pair<float,float> >", "vector;utility");
     
-    initialize_tracking();
-    initialize_histograms();
+    // Reset global variables
+    jets_found = 0;
+    jet_cells_hists.clear();
+    all_jets_pt.clear();
+    all_jets_eta.clear();
+    all_jets_phi.clear();
+    all_jets_long_width.clear();
+    all_jets_long_width_sigma.clear();
+    
+    // Initialize summary histograms
+    initialize_summary_histograms();
 
     const std::string path = "./SuperNtuple_mu200";
-    for (int i = startIndex; i <= endIndex && !all_events_found(); ++i) {
+    for (int i = startIndex; i <= endIndex && jets_found < max_jets; ++i) {
         std::ostringstream filename;
         filename << path << "/user.scheong.43348828.Output._" 
                  << std::setw(6) << std::setfill('0') << i 
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), i, energyThreshold, significanceThreshold);
+            process_file(filename.str(), minCells, energyThreshold, jetPtMin, jetPtMax, deltaRThreshold,
+                        jetWidthMin, jetWidthMax, jetEtaCut, jetEM1FractionCut, jetEM12FractionCut,
+                        jetLongWidthCut, jetLongWidthSigmaMin, jetLongWidthSigmaMax);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
     }
 
+    // Create output file
     std::ostringstream outputFilename;
-    outputFilename << "event_display_Eover" << std::fixed << std::setprecision(1) << energyThreshold << ".root";
+    outputFilename << "jet_display_with_cuts_minCells" << minCells 
+                  << "_Eover" << std::fixed << std::setprecision(1) << energyThreshold 
+                  << "_jetPt" << std::setprecision(0) << jetPtMin << "to" << jetPtMax
+                  << "_dR" << std::setprecision(1) << deltaRThreshold 
+                  << "_" << std::setprecision(0) << jetLongWidthSigmaMin
+                  << "_" << std::setprecision(0) << jetLongWidthSigmaMax << ".root";
     
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
     if (!outputFile || outputFile->IsZombie()) {
@@ -281,29 +419,26 @@ void event_display_analysis(float energyThreshold = 1.0, float significanceThres
         return;
     }
 
-    // Write histograms dynamically
-    for (const auto& pair : all_cells_hist_map) {
-        pair.second->Write();
+    // Write jet cell histograms
+    for (size_t i = 0; i < jet_cells_hists.size(); ++i) {
+        if (jet_cells_hists[i] != nullptr) {
+            jet_cells_hists[i]->Write();
+        }
     }
     
-    for (const auto& pair : jet_matched_hist_map) {
-        pair.second->Write();
-    }
+    // Write summary histograms
+    all_jets_eta_hist->Write();
+    all_jets_phi_hist->Write();
+    all_jets_long_width_hist->Write();
+    all_jets_long_width_sigma_hist->Write();
 
-    all_cells_coverage_hist->Write();
-
-    // Create and write jet information tree dynamically
+    // Create and write jet information tree
     TTree *jetInfoTree = new TTree("jetInfo", "Selected Jets Information");
-    
-    for (int jet_count : target_jet_counts) {
-        std::string branch_name_pt = "jets" + std::to_string(jet_count) + "_pt";
-        std::string branch_name_eta = "jets" + std::to_string(jet_count) + "_eta";
-        std::string branch_name_phi = "jets" + std::to_string(jet_count) + "_phi";
-        
-        jetInfoTree->Branch(branch_name_pt.c_str(), &jets_pt_map[jet_count]);
-        jetInfoTree->Branch(branch_name_eta.c_str(), &jets_eta_map[jet_count]);
-        jetInfoTree->Branch(branch_name_phi.c_str(), &jets_phi_map[jet_count]);
-    }
+    jetInfoTree->Branch("jets_pt", &all_jets_pt);
+    jetInfoTree->Branch("jets_eta", &all_jets_eta);
+    jetInfoTree->Branch("jets_phi", &all_jets_phi);
+    jetInfoTree->Branch("jets_long_width", &all_jets_long_width);
+    jetInfoTree->Branch("jets_long_width_sigma", &all_jets_long_width_sigma);
     
     jetInfoTree->Fill();
     jetInfoTree->Write();
@@ -311,28 +446,15 @@ void event_display_analysis(float energyThreshold = 1.0, float significanceThres
     outputFile->Close();
     delete outputFile;
 
-    // Clean up memory dynamically
-    for (const auto& pair : all_cells_hist_map) {
-        delete pair.second;
+    // Clean up memory
+    for (TH2F* hist : jet_cells_hists) {
+        delete hist;
     }
-    all_cells_hist_map.clear();
-    
-    for (const auto& pair : jet_matched_hist_map) {
-        delete pair.second;
-    }
-    jet_matched_hist_map.clear();
+    delete all_jets_eta_hist;
+    delete all_jets_phi_hist;
+    delete all_jets_long_width_hist;
+    delete all_jets_long_width_sigma_hist;
 
-    delete all_cells_coverage_hist;
-
-    std::cout << "Event display analysis completed. Results saved to " << outputFilename.str() << std::endl;
-    
-    // Print summary
-    std::cout << "\n=== Summary ===" << std::endl;
-    std::cout << "Events found for each jet count:" << std::endl;
-    for (int count : target_jet_counts) {
-        std::cout << "  " << count << " jets: " << (found_events[count] ? "Found" : "Not found") << std::endl;
-        if (found_events[count]) {
-            std::cout << "    Total jets stored: " << jets_pt_map[count].size() << std::endl;
-        }
-    }
+    std::cout << "Jet display analysis with cuts completed. Results saved to " << outputFilename.str() << std::endl;
+    std::cout << "Found " << jets_found << " jets passing all cuts." << std::endl;
 }
