@@ -1,0 +1,58 @@
+# Experimental configuration with spatial features and aggressive regularization
+model_name: "transformer_experiment1"
+
+# Data parameters
+data_dir: "../selected_h5/"
+num_files: 50
+max_cells: 50
+min_cells: 3
+cell_selection_feature: "Cell_significance"
+use_spatial_features: true
+
+# Data split parameters
+test_size: 0.3
+val_split: 0.33333
+random_state: 42
+
+# Model architecture parameters
+d_model: 192
+num_heads: 12
+dff: 384
+num_transformer_blocks: 4
+dropout_rate: 0.2
+
+# Dense layer parameters
+vertex_dense_units: 96
+final_dense_units: [384, 192, 96, 48]
+final_dropout_rates: [0.4, 0.3, 0.2, 0.1]
+use_batch_norm: true
+
+# Training parameters
+batch_size: 48
+epochs: 75
+learning_rate: 0.00008
+lr_reduction_factor: 0.7
+early_stopping_patience: 18
+lr_patience: 6
+min_lr: 0.0000001
+
+# Model save parameters
+models_base_dir: "models"
+
+# Feature definitions
+spatial_features: ["Cell_x", "Cell_y", "Cell_z"]
+vertex_spatial_features: ["HSvertex_reco_x", "HSvertex_reco_y", "HSvertex_reco_z"]
+all_cell_features:
+  - "Cell_x"
+  - "Cell_y" 
+  - "Cell_z"
+  - "Cell_eta"
+  - "Cell_phi"
+  - "Cell_Barrel"
+  - "Cell_layer"
+  - "Cell_time_TOF_corrected"
+  - "Cell_e"
+  - "Cell_significance"
+  - "matched_track_pt"
+  - "matched_track_deltaR"
+skip_normalization: ["Cell_time_TOF_corrected", "Cell_Barrel", "Cell_layer"]
