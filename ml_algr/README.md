@@ -1,6 +1,6 @@
 # Vertex Time Prediction Models
 
-A modular framework for training transformer-based models for vertex time prediction in experimental particle physics.
+A modular framework for training transformer-based models for vertex t0 prediction with LAr Calorimeter in the ATLAS experiment.
 
 ## Project Structure
 
