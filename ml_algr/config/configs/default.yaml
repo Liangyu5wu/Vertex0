@@ -9,6 +9,11 @@ min_cells: 3
 cell_selection_feature: "Cell_e"
 use_spatial_features: false
 
+# Cell filtering parameters
+use_cell_track_matching: true
+require_valid_cells: true
+additional_cell_filters: {}
+
 # Data split parameters
 test_size: 0.3
 val_split: 0.33333  # 1/3

@@ -1,0 +1,64 @@
+{
+  "data_dir": "/sdf/data/atlas/u/liangyu/vertextiming/Vertex0/selected_h5/",
+  "num_files": 50,
+  "max_cells": 50,
+  "min_cells": 3,
+  "cell_selection_feature": "Cell_e",
+  "use_spatial_features": false,
+  "test_size": 0.3,
+  "val_split": 0.33333,
+  "random_state": 42,
+  "batch_size": 64,
+  "epochs": 30,
+  "early_stopping_patience": 10,
+  "lr_patience": 5,
+  "min_lr": 1e-07,
+  "models_base_dir": "models",
+  "model_name": "transformer_simple_experiment",
+  "spatial_features": [
+    "Cell_x",
+    "Cell_y",
+    "Cell_z"
+  ],
+  "vertex_spatial_features": [
+    "HSvertex_reco_x",
+    "HSvertex_reco_y",
+    "HSvertex_reco_z"
+  ],
+  "all_cell_features": [
+    "Cell_x",
+    "Cell_y",
+    "Cell_z",
+    "Cell_eta",
+    "Cell_phi",
+    "Cell_Barrel",
+    "Cell_layer",
+    "Cell_time_TOF_corrected",
+    "Cell_e",
+    "Cell_significance",
+    "matched_track_pt",
+    "matched_track_deltaR"
+  ],
+  "skip_normalization": [
+    "Cell_time_TOF_corrected",
+    "Cell_Barrel",
+    "Cell_layer"
+  ],
+  "d_model": 64,
+  "num_heads": 4,
+  "dff": 128,
+  "num_transformer_blocks": 2,
+  "dropout_rate": 0.1,
+  "vertex_dense_units": 16,
+  "final_dense_units": [
+    64,
+    32
+  ],
+  "final_dropout_rates": [
+    0.2,
+    0.1
+  ],
+  "use_batch_norm": true,
+  "learning_rate": 0.0001,
+  "lr_reduction_factor": 0.5
+}

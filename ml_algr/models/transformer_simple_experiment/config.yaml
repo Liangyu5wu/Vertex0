@@ -1,0 +1,56 @@
+all_cell_features:
+- Cell_x
+- Cell_y
+- Cell_z
+- Cell_eta
+- Cell_phi
+- Cell_Barrel
+- Cell_layer
+- Cell_time_TOF_corrected
+- Cell_e
+- Cell_significance
+- matched_track_pt
+- matched_track_deltaR
+batch_size: 64
+cell_selection_feature: Cell_e
+d_model: 64
+data_dir: /sdf/data/atlas/u/liangyu/vertextiming/Vertex0/selected_h5/
+dff: 128
+dropout_rate: 0.1
+early_stopping_patience: 10
+epochs: 30
+final_dense_units:
+- 64
+- 32
+final_dropout_rates:
+- 0.2
+- 0.1
+learning_rate: 0.0001
+lr_patience: 5
+lr_reduction_factor: 0.5
+max_cells: 50
+min_cells: 3
+min_lr: 1.0e-07
+model_name: transformer_simple_experiment
+models_base_dir: models
+num_files: 50
+num_heads: 4
+num_transformer_blocks: 2
+random_state: 42
+skip_normalization:
+- Cell_time_TOF_corrected
+- Cell_Barrel
+- Cell_layer
+spatial_features:
+- Cell_x
+- Cell_y
+- Cell_z
+test_size: 0.3
+use_batch_norm: true
+use_spatial_features: false
+val_split: 0.33333
+vertex_dense_units: 16
+vertex_spatial_features:
+- HSvertex_reco_x
+- HSvertex_reco_y
+- HSvertex_reco_z

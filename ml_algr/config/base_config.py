@@ -19,6 +19,11 @@ class BaseConfig:
     cell_selection_feature: str = 'Cell_e'
     use_spatial_features: bool = False
     
+    # Cell filtering parameters
+    use_cell_track_matching: bool = True
+    require_valid_cells: bool = True
+    additional_cell_filters: Dict[str, Any] = None
+    
     # Data split parameters
     test_size: float = 0.3
     val_split: float = 1/3  # Fraction of test_size for validation
@@ -58,12 +63,19 @@ class BaseConfig:
             
         if self.skip_normalization is None:
             self.skip_normalization = ['Cell_time_TOF_corrected', 'Cell_Barrel', 'Cell_layer']
+            
+        if self.additional_cell_filters is None:
+            self.additional_cell_filters = {}
     
     @property
     def cell_features(self) -> List[str]:
         """Get cell features based on spatial feature usage."""
-        return [f for f in self.all_cell_features 
-                if self.use_spatial_features or f not in self.spatial_features]
+        if self.use_spatial_features:
+            # Include all features if spatial features are enabled
+            return self.all_cell_features
+        else:
+            # Exclude spatial features if spatial features are disabled
+            return [f for f in self.all_cell_features if f not in self.spatial_features]
     
     @property
     def model_dir(self) -> str:
@@ -80,6 +92,21 @@ class BaseConfig:
         """Get evaluation plots directory."""
         return os.path.join(self.model_dir, "evaluation_plots")
     
+    def get_cell_filtering_description(self) -> str:
+        """Get description of cell filtering conditions."""
+        conditions = []
+        
+        if self.require_valid_cells:
+            conditions.append("valid == True")
+            
+        if self.use_cell_track_matching:
+            conditions.append("matched_track_HS == 1")
+            
+        for key, value in self.additional_cell_filters.items():
+            conditions.append(f"{key} == {value}")
+            
+        return " & ".join(conditions) if conditions else "No filtering"
+    
     def create_directories(self):
         """Create necessary directories."""
         os.makedirs(self.model_dir, exist_ok=True)
@@ -93,7 +120,7 @@ class BaseConfig:
         # Convert to dictionary, handling non-serializable types
         config_dict = {}
         for key, value in self.__dict__.items():
-            if isinstance(value, (str, int, float, bool, list)):
+            if isinstance(value, (str, int, float, bool, list, dict)):
                 config_dict[key] = value
             else:
                 config_dict[key] = str(value)
@@ -115,7 +142,7 @@ class BaseConfig:
         # Convert to dictionary
         config_dict = {}
         for key, value in self.__dict__.items():
-            if isinstance(value, (str, int, float, bool, list)):
+            if isinstance(value, (str, int, float, bool, list, dict)):
                 config_dict[key] = value
             else:
                 config_dict[key] = str(value)
@@ -153,6 +180,7 @@ class BaseConfig:
         
         print(f"Configuration loaded from: {yaml_path}")
         print(f"Model name: {instance.model_name}")
+        print(f"Cell filtering: {instance.get_cell_filtering_description()}")
         
         return instance
     
@@ -216,6 +244,9 @@ class BaseConfig:
                 'data_dir', 'num_files', 'max_cells', 'min_cells', 
                 'cell_selection_feature', 'use_spatial_features'
             ],
+            "Cell Filtering Parameters": [
+                'use_cell_track_matching', 'require_valid_cells', 'additional_cell_filters'
+            ],
             "Training Parameters": [
                 'batch_size', 'epochs', 'early_stopping_patience', 
                 'lr_patience', 'min_lr'
@@ -230,7 +261,14 @@ class BaseConfig:
             for param in params:
                 if hasattr(self, param):
                     value = getattr(self, param)
-                    print(f"  {param}: {value}")
+                    if param == 'additional_cell_filters':
+                        print(f"  {param}: {dict(value) if value else '{}'}")
+                    else:
+                        print(f"  {param}: {value}")
+        
+        # Add special filtering description
+        print(f"\nCell Filtering Description:")
+        print(f"  Conditions: {self.get_cell_filtering_description()}")
         
         # Add architecture parameters if they exist
         arch_params = ['d_model', 'num_heads', 'dff', 'num_transformer_blocks', 'dropout_rate']
@@ -254,4 +292,20 @@ class BaseConfig:
         assert self.epochs > 0, "epochs must be positive"
         assert self.batch_size > 0, "batch_size must be positive"
         
+        # Feature validations
+        assert len(self.all_cell_features) > 0, "all_cell_features cannot be empty"
+        assert len(self.cell_features) > 0, "No cell features available with current settings"
+        
+        # Cell filtering validations
+        if not self.require_valid_cells and not self.use_cell_track_matching and not self.additional_cell_filters:
+            print("Warning: No cell filtering enabled. This may include low-quality cells.")
+        
+        # Check if additional_cell_filters contains valid keys
+        if self.additional_cell_filters:
+            for filter_key in self.additional_cell_filters.keys():
+                if filter_key not in self.all_cell_features:
+                    print(f"Warning: Filter key '{filter_key}' not in all_cell_features")
+        
         print("Configuration validation passed.")
+        print(f"Using {len(self.cell_features)} out of {len(self.all_cell_features)} available features")
+        print(f"Cell filtering: {self.get_cell_filtering_description()}")

@@ -96,7 +96,7 @@ class TransformerModel:
         model.compile(
             optimizer=optimizer,
             loss='mse',
-            metrics=['mae', root_mean_squared_error]
+            metrics=['mae', root_mean_squared_error, tf.keras.metrics.MeanSquaredError(name='mse_metric')]
         )
         
         self.model = model
