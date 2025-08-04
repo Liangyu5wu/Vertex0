@@ -1,5 +1,7 @@
 """Main training script for vertex time prediction models with YAML config support."""
 
+# python scripts/train.py --config-file config/configs/experiment1.yaml
+
 import os
 import sys
 import argparse
@@ -169,7 +171,14 @@ def main():
         # Build model
         print(f"\n4. Building model...")
         model = TransformerModel(config)
-        keras_model = model.build_model(len(config.cell_features), train_vertex_norm.shape[1])
+        
+        # Use enhanced feature dimension if detector params are enabled
+        if hasattr(data_processor, 'get_enhanced_feature_dim'):
+            feature_dim = data_processor.get_enhanced_feature_dim()
+        else:
+            feature_dim = len(config.cell_features)
+        
+        keras_model = model.build_model(feature_dim, train_vertex_norm.shape[1])
         
         # Train model
         print(f"\n5. Training model...")

@@ -1,5 +1,7 @@
 """Main evaluation script for vertex time prediction models."""
 
+# python scripts/evaluate.py --model-dir models/transformer_simple_experiment --load-data
+
 import os
 import sys
 import argparse
