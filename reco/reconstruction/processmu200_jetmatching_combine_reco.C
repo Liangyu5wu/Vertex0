@@ -10,6 +10,7 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <TH1F.h>
+#include <TH2F.h>
 
 const double c_light = 0.299792458; // mm/ps
 
@@ -30,6 +31,9 @@ const float eme2_ysigma[7] = {1759.24, 1295.54, 939.963, 680.803, 537.385, 353.0
 
 const float eme3_y[7] = {125.077, 103.004, 88.0972, 68.0425, 54.7863, 56.1797, 38.8708};
 const float eme3_ysigma[7] = {1197.23, 856.656, 625.128, 439.311, 356.805, 224.769, 101.193};
+
+TH2F *eventTimeVsTruthTimeHist;
+TH2F *jetTimeVsTruthTimeHist;
 
 TH1F *eventTimeHist;
 TH1F *truthTimeHist;
@@ -82,6 +86,16 @@ void initialize_histograms() {
     const int bins = 400;
     const double min_range = -2000;
     const double max_range = 2000;
+    
+    eventTimeVsTruthTimeHist = new TH2F("eventTimeVsTruthTime", "Event Time vs Truth Time", 
+                                       bins, min_range, max_range, bins, min_range, max_range);
+    eventTimeVsTruthTimeHist->GetXaxis()->SetTitle("Truth Time [ps]");
+    eventTimeVsTruthTimeHist->GetYaxis()->SetTitle("Reconstructed Event Time [ps]");
+    
+    jetTimeVsTruthTimeHist = new TH2F("jetTimeVsTruthTime", "Jet Time vs Truth Time", 
+                                     bins, min_range, max_range, bins, min_range, max_range);
+    jetTimeVsTruthTimeHist->GetXaxis()->SetTitle("Truth Time [ps]");
+    jetTimeVsTruthTimeHist->GetYaxis()->SetTitle("Reconstructed Jet Time [ps]");
     
     eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time (All Layers)", bins, min_range, max_range);
     eventTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
@@ -617,6 +631,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                         jetDeltaTimeHist->Fill(delta_jet_time);
                         jetLongWidthHist->Fill(longitudinal_width);
                         jetLongWidthSigmaHist->Fill(saved_sigma);
+                        
+                        jetTimeVsTruthTimeHist->Fill(vtx_time, jet_time);
                     }
                 }
             }
@@ -630,6 +646,8 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 float delta_event_time = event_time - vtx_time;
                 eventDeltaTimeHist->Fill(delta_event_time);
                 eventTimeHist->Fill(event_time);
+                
+                eventTimeVsTruthTimeHist->Fill(vtx_time, event_time);
             }
 
             if (weight_sum_emb > 0) {
@@ -750,6 +768,9 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
         return;
     }
 
+    eventTimeVsTruthTimeHist->Write();
+    jetTimeVsTruthTimeHist->Write();
+
     eventTimeHist->Write();
     truthTimeHist->Write();
     eventDeltaTimeHist->Write();
@@ -792,6 +813,10 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     outputFile->Close();
 
     delete outputFile;
+    
+    delete eventTimeVsTruthTimeHist;
+    delete jetTimeVsTruthTimeHist;
+    
     delete eventTimeHist;
     delete eventDeltaTimeHist;
     delete truthTimeHist;
