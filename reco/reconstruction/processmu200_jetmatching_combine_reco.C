@@ -714,10 +714,10 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46, 
-                                  float jetPtMin = 30.0, float jetPtMax = 1000.0, float deltaRThreshold = 0.3, int maxJets = -1,
-                                  float jetWidthMin = 0.17, float jetWidthMax = 0.4, float jetEtaCut = 2.0, float jetEM1FractionCut = 1.1,
-                                  float jetEM12FractionCut = 1.1, float jetLongWidthCut = 10000.0, float jetLongWidthSigmaCut = 10000.0) {
+void processmu200_jetmatching_reco(float energyThreshold = 2.0, int startIndex = 1, int endIndex = 46, 
+                                  float jetPtMin = 30.0, float jetPtMax = 100000.0, float deltaRThreshold = 0.3, int maxJets = -1,
+                                  float jetWidthMin = -0.17, float jetWidthMax = 2.0, float jetEtaCut = 10.0, float jetEM1FractionCut = -1.0,
+                                  float jetEM12FractionCut = -1.0, float jetLongWidthCut = 100000.0, float jetLongWidthSigmaCut = 100000.0) {
 
     gInterpreter->GenerateDictionary("vector<vector<float> >", "vector");
     gInterpreter->GenerateDictionary("vector<vector<int> >", "vector");
@@ -727,7 +727,7 @@ void processmu200_jetmatching_reco(float energyThreshold = 1.0, int startIndex =
     unmatchedVertices = 0;
     initialize_histograms();
 
-    const std::string path = "./SuperNtuple_mu200";
+    const std::string path = "/fs/ddn/sdf/group/atlas/d/liangyu/jetML/SuperNtuple_mu200";
     for (int i = startIndex; i <= endIndex; ++i) {
         std::ostringstream filename;
         filename << path << "/user.scheong.43348828.Output._" 
