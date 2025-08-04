@@ -45,6 +45,15 @@ class BaseConfig:
     vertex_spatial_features: List[str] = None
     all_cell_features: List[str] = None
     skip_normalization: List[str] = None
+
+    # Detector calibration parameters (optional)
+    use_detector_params: bool = False
+    emb1_params: List[float] = None
+    emb2_params: List[float] = None  
+    emb3_params: List[float] = None
+    eme1_params: List[float] = None
+    eme2_params: List[float] = None
+    eme3_params: List[float] = None
     
     def __post_init__(self):
         """Initialize feature lists after dataclass initialization."""
@@ -66,6 +75,35 @@ class BaseConfig:
             
         if self.additional_cell_filters is None:
             self.additional_cell_filters = {}
+            
+        # Validate detector parameters if enabled
+        if self.use_detector_params:
+            if not all([
+                self.emb1_params, self.emb2_params, self.emb3_params,
+                self.eme1_params, self.eme2_params, self.eme3_params
+            ]):
+                raise ValueError(
+                    "When use_detector_params=True, all detector parameter arrays "
+                    "(emb1_params, emb2_params, emb3_params, eme1_params, eme2_params, eme3_params) "
+                    "must be provided in the configuration file."
+                )
+    
+    @property
+    def detector_params_dim(self) -> int:
+        """Get dimension of detector parameters."""
+        if not self.use_detector_params:
+            return 0
+        # Total length of all detector parameter arrays
+        return (len(self.emb1_params) + len(self.emb2_params) + len(self.emb3_params) + 
+                len(self.eme1_params) + len(self.eme2_params) + len(self.eme3_params))
+    
+    @property
+    def detector_params_vector(self) -> List[float]:
+        """Get flattened detector parameters vector."""
+        if not self.use_detector_params:
+            return []
+        return (self.emb1_params + self.emb2_params + self.emb3_params + 
+                self.eme1_params + self.eme2_params + self.eme3_params)
     
     @property
     def cell_features(self) -> List[str]:
@@ -270,6 +308,18 @@ class BaseConfig:
         print(f"\nCell Filtering Description:")
         print(f"  Conditions: {self.get_cell_filtering_description()}")
         
+        # Add detector parameters info if enabled
+        if self.use_detector_params:
+            print(f"\nDetector Parameters:")
+            print(f"  Use detector params: {self.use_detector_params}")
+            print(f"  Total detector params dim: {self.detector_params_dim}")
+            print(f"  EMB1 params: {len(self.emb1_params)} values")
+            print(f"  EMB2 params: {len(self.emb2_params)} values")
+            print(f"  EMB3 params: {len(self.emb3_params)} values")
+            print(f"  EME1 params: {len(self.eme1_params)} values")
+            print(f"  EME2 params: {len(self.eme2_params)} values")
+            print(f"  EME3 params: {len(self.eme3_params)} values")
+        
         # Add architecture parameters if they exist
         arch_params = ['d_model', 'num_heads', 'dff', 'num_transformer_blocks', 'dropout_rate']
         if any(hasattr(self, param) for param in arch_params):
@@ -305,6 +355,24 @@ class BaseConfig:
             for filter_key in self.additional_cell_filters.keys():
                 if filter_key not in self.all_cell_features:
                     print(f"Warning: Filter key '{filter_key}' not in all_cell_features")
+        
+        # Detector parameters validation
+        if self.use_detector_params:
+            # Check that all parameter arrays are provided and not empty
+            param_arrays = [
+                ('emb1_params', self.emb1_params),
+                ('emb2_params', self.emb2_params), 
+                ('emb3_params', self.emb3_params),
+                ('eme1_params', self.eme1_params),
+                ('eme2_params', self.eme2_params),
+                ('eme3_params', self.eme3_params)
+            ]
+            
+            for param_name, param_array in param_arrays:
+                if not param_array or len(param_array) == 0:
+                    raise ValueError(f"{param_name} must be provided and non-empty when use_detector_params=True")
+                if not all(isinstance(x, (int, float)) for x in param_array):
+                    raise ValueError(f"{param_name} must contain only numeric values")
         
         print("Configuration validation passed.")
         print(f"Using {len(self.cell_features)} out of {len(self.all_cell_features)} available features")
