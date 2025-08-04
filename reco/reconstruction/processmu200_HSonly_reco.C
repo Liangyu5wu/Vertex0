@@ -30,6 +30,10 @@ const float eme2_ysigma[7] = {1708.6, 1243.34, 881.465, 627.823, 486.99, 311.032
 const float eme3_y[7] = {189.356, 140.293, 111.232, 86.8784, 69.0834, 60.5034, 38.5008};
 const float eme3_ysigma[7] = {1137.06, 803.044, 602.152, 403.393, 318.327, 210.827, 99.697};
 
+
+TH2F *eventTimeVsTruthTimeHist;
+
+
 TH1F *eventTimeHist;
 TH1F *truthTimeHist;
 TH1F *eventDeltaTimeHist;
@@ -64,6 +68,11 @@ void initialize_histograms() {
     const int bins = 400;
     const double min_range = -2000;
     const double max_range = 2000;
+
+    eventTimeVsTruthTimeHist = new TH2F("eventTimeVsTruthTime", "Event Time vs Truth Time", 
+                                       bins, min_range, max_range, bins, min_range, max_range);
+    eventTimeVsTruthTimeHist->GetXaxis()->SetTitle("Truth Time [ps]");
+    eventTimeVsTruthTimeHist->GetYaxis()->SetTitle("Reconstructed Event Time [ps]");
     
     eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time (All Layers)", bins, min_range, max_range);
     eventTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
@@ -470,6 +479,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 float delta_event_time_emb = event_time_emb - vtx_time;
                 embDeltaTimeHist->Fill(delta_event_time_emb);
                 embTimeHist->Fill(event_time_emb);
+                eventTimeVsTruthTimeHist->Fill(vtx_time, event_time);
             }
 
             if (weight_sum_eme > 0) {
@@ -533,7 +543,7 @@ void processmu200_reco(float energyThreshold = 1.0, float significancecut = 4.0,
     unmatchedVertices = 0;
     initialize_histograms();
 
-    const std::string path = "../SuperNtuple_mu200";
+    const std::string path = "/fs/ddn/sdf/group/atlas/d/liangyu/jetML/SuperNtuple_mu200";
     for (int i = startIndex; i <= endIndex; ++i) {
         std::ostringstream filename;
         filename << path << "/user.scheong.43348828.Output._" 
@@ -560,6 +570,8 @@ void processmu200_reco(float energyThreshold = 1.0, float significancecut = 4.0,
         std::cerr << "Error creating output file" << std::endl;
         return;
     }
+
+    eventTimeVsTruthTimeHist->Write();
 
     eventTimeHist->Write();
     truthTimeHist->Write();
@@ -588,6 +600,7 @@ void processmu200_reco(float energyThreshold = 1.0, float significancecut = 4.0,
 
     outputFile->Close();
     delete outputFile;
+    delete eventTimeVsTruthTimeHist;
     delete eventTimeHist;
     delete eventDeltaTimeHist;
     delete truthTimeHist;
