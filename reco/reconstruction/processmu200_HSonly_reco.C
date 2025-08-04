@@ -8,8 +8,6 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <TH1F.h>
-#include <TH2F.h>
-
 
 const double c_light = 0.299792458; // mm/ps
 
@@ -17,23 +15,20 @@ const double c_light = 0.299792458; // mm/ps
 const float emb1_y[7] = {48.5266, 37.56, 28.9393, 23.1505, 18.5468, 13.0141, 8.03724};
 const float emb1_ysigma[7] = {416.994, 293.206, 208.321, 148.768, 117.756, 106.804, 57.6545};
 
-const float emb2_y[7] = {46.2244, 41.5079, 38.5519, 36.9812, 31.2718, 29.7469, 19.331};
+const float emb2_y[7] = {46.2244, 41.5079, 38.5544, 36.9812, 31.2718, 29.7469, 19.331};
 const float emb2_ysigma[7] = {2001.56, 1423.38, 1010.24, 720.392, 551.854, 357.594, 144.162};
 
 const float emb3_y[7] = {104.325, 106.119, 71.1017, 75.151, 51.2334, 48.2088, 46.6502};
 const float emb3_ysigma[7] = {1215.53, 880.826, 680.742, 468.689, 372.184, 279.134, 162.288};
 
-const float eme1_y[7] = {125.309, 96.1057, 82.8034, 58.9521, 52.133, 41.3032, 20.176};
-const float eme1_ysigma[7] = {855.668, 663.495, 443.559, 341.377, 277.846, 185.536, 82.3408};
+const float eme1_y[7] = {125.348, 102.888, 86.7558, 59.7355, 55.3299, 41.3032, 23.646};
+const float eme1_ysigma[7] = {855.662, 589.529, 435.052, 314.788, 252.453, 185.536, 76.5333};
 
-const float eme2_y[7] = {280.897, 225.087, 173.786, 135.854, 113.115, 83.8009, 37.1829};
-const float eme2_ysigma[7] = {1743.96, 1247.33, 883.602, 628.468, 487.466, 311.032, 106.533};
+const float eme2_y[7] = {272.149, 224.475, 173.443, 135.829, 113.05, 83.8009, 37.1829};
+const float eme2_ysigma[7] = {1708.6, 1243.34, 881.465, 627.823, 486.99, 311.032, 106.533};
 
 const float eme3_y[7] = {189.356, 140.293, 111.232, 86.8784, 69.0834, 60.5034, 38.5008};
 const float eme3_ysigma[7] = {1137.06, 803.044, 602.152, 403.393, 318.327, 210.827, 99.697};
-
-
-TH2F *eventTimeVsTruthTimeHist;
 
 TH1F *eventTimeHist;
 TH1F *truthTimeHist;
@@ -69,11 +64,6 @@ void initialize_histograms() {
     const int bins = 400;
     const double min_range = -2000;
     const double max_range = 2000;
-
-    eventTimeVsTruthTimeHist = new TH2F("eventTimeVsTruthTime", "Event Time vs Truth Time", 
-                                       bins, min_range, max_range, bins, min_range, max_range);
-    eventTimeVsTruthTimeHist->GetXaxis()->SetTitle("Truth Time [ps]");
-    eventTimeVsTruthTimeHist->GetYaxis()->SetTitle("Reconstructed Event Time [ps]");
     
     eventTimeHist = new TH1F("eventTime", "Reconstructed Event Time (All Layers)", bins, min_range, max_range);
     eventTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
@@ -153,15 +143,15 @@ void initialize_histograms() {
     emeTimeHist->GetXaxis()->SetTitle("Reconstructed Time [ps]");
     emeTimeHist->GetYaxis()->SetTitle("Events");
 
-    eventCellHist = new TH1F("eventCell", "Cells Used", 500, 0, 500);
+    eventCellHist = new TH1F("eventCell", "Cells Used", 501, 0, 500);
     eventCellHist->GetXaxis()->SetTitle("Cells Used");
     eventCellHist->GetYaxis()->SetTitle("Events");
 
-    emeCellHist = new TH1F("emeCell", "Cells Used (EME Only)", 500, 0, 500);
+    emeCellHist = new TH1F("emeCell", "Cells Used (EME Only)", 501, 0, 500);
     emeCellHist->GetXaxis()->SetTitle("Cells Used");
     emeCellHist->GetYaxis()->SetTitle("Events");
 
-    embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 500, 0, 500);
+    embCellHist = new TH1F("embCell", "Cells Used (EMB Only)", 501, 0, 500);
     embCellHist->GetXaxis()->SetTitle("Cells Used");
     embCellHist->GetYaxis()->SetTitle("Events");
 }
@@ -192,7 +182,7 @@ float get_sigma(bool is_barrel, int layer, int energy_bin) {
     return 1.0;
 }
 
-void process_file(const std::string &filename, float energyThreshold = 1.0) {
+void process_file(const std::string &filename, float energyThreshold = 1.0, float significancecut = 4.0) {
     TFile *file = TFile::Open(filename.c_str(), "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -331,7 +321,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
 
             for (size_t j = 0; j < cellE->size(); ++j) {
                 if (cellE->at(j) < energyThreshold) continue;
-                if (cellSignificance->at(j) < 3.0) continue;
+                if (cellSignificance->at(j) < significancecut) continue;
 
                 float cell_time = cellTime->at(j);
                 float cell_x = cellX->at(j);
@@ -473,7 +463,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
                 float delta_event_time = event_time - vtx_time;
                 eventDeltaTimeHist->Fill(delta_event_time);
                 eventTimeHist->Fill(event_time);
-                eventTimeVsTruthTimeHist->Fill(vtx_time, event_time);
             }
 
             if (weight_sum_emb > 0) {
@@ -539,12 +528,12 @@ void process_file(const std::string &filename, float energyThreshold = 1.0) {
     std::cout << "Processed file: " << filename << std::endl;
 }
 
-void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endIndex = 46) {
+void processmu200_reco(float energyThreshold = 1.0, float significancecut = 4.0, int startIndex = 1, int endIndex = 46) {
     totalTruthVertices = 0;
     unmatchedVertices = 0;
     initialize_histograms();
 
-    const std::string path = "/fs/ddn/sdf/group/atlas/d/liangyu/jetML/SuperNtuple_mu200";
+    const std::string path = "../SuperNtuple_mu200";
     for (int i = startIndex; i <= endIndex; ++i) {
         std::ostringstream filename;
         filename << path << "/user.scheong.43348828.Output._" 
@@ -552,7 +541,7 @@ void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endI
                  << ".SuperNtuple.root";
 
         if (std::filesystem::exists(filename.str())) {
-            process_file(filename.str(), energyThreshold);
+            process_file(filename.str(), energyThreshold, significancecut);
         } else {
             std::cerr << "File does not exist: " << filename.str() << std::endl;
         }
@@ -564,15 +553,13 @@ void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endI
     std::cout << "Matching Rate: " << (100.0 * (totalTruthVertices - unmatchedVertices) / totalTruthVertices) << "%" << std::endl;
 
     std::ostringstream outputFilename;
-    outputFilename << "HSonly_reconstruction_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << "_significance3.root";
+    outputFilename << "HSonly_reconstruction_Eover"  << std::fixed << std::setprecision(1) << energyThreshold << "_signfover" << std::fixed << std::setprecision(2) << significancecut << ".root";
     TFile *outputFile = new TFile(outputFilename.str().c_str(), "RECREATE");
 
     if (!outputFile || outputFile->IsZombie()) {
         std::cerr << "Error creating output file" << std::endl;
         return;
     }
-
-    eventTimeVsTruthTimeHist->Write();
 
     eventTimeHist->Write();
     truthTimeHist->Write();
@@ -600,9 +587,7 @@ void processmu200_reco(float energyThreshold = 1.0, int startIndex = 1, int endI
     emeCellHist->Write();
 
     outputFile->Close();
-    
     delete outputFile;
-    delete eventTimeVsTruthTimeHist;
     delete eventTimeHist;
     delete eventDeltaTimeHist;
     delete truthTimeHist;
