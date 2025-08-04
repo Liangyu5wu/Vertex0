@@ -472,6 +472,7 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 float delta_event_time = event_time - vtx_time;
                 eventDeltaTimeHist->Fill(delta_event_time);
                 eventTimeHist->Fill(event_time);
+                eventTimeVsTruthTimeHist->Fill(vtx_time, event_time);
             }
 
             if (weight_sum_emb > 0) {
@@ -479,7 +480,6 @@ void process_file(const std::string &filename, float energyThreshold = 1.0, floa
                 float delta_event_time_emb = event_time_emb - vtx_time;
                 embDeltaTimeHist->Fill(delta_event_time_emb);
                 embTimeHist->Fill(event_time_emb);
-                eventTimeVsTruthTimeHist->Fill(vtx_time, event_time);
             }
 
             if (weight_sum_eme > 0) {
